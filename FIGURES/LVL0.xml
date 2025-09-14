@@ -1,0 +1,100 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36" version="28.2.0">
+  <diagram name="Page-1" id="YK83xAUByeSoX9guYTcJ">
+    <mxGraphModel dx="1426" dy="777" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="SLdjuISg8A11YM6O4AhX-2" value="&lt;h2&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;PATIENT&lt;/font&gt;&lt;/h2&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#008a00;fontColor=#ffffff;strokeColor=#005700;" vertex="1" parent="1">
+          <mxGeometry x="120" y="360" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-3" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;&lt;b&gt;DOCTOR&lt;/b&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" vertex="1" parent="1">
+          <mxGeometry x="600" y="360" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-6" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;AI Physical Therapy Tracker App&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;perimeterSpacing=5;" vertex="1" parent="1">
+          <mxGeometry x="344" y="340" width="163" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-12" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;curved=1;" edge="1" parent="1" source="SLdjuISg8A11YM6O4AhX-2" target="SLdjuISg8A11YM6O4AhX-6">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="380" as="sourcePoint" />
+            <mxPoint x="480" y="380" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="290" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-13" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Therapy Report&lt;/font&gt;" style="edgeLabel;resizable=0;html=1;;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="SLdjuISg8A11YM6O4AhX-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-14" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Feedback&lt;/font&gt;" style="edgeLabel;resizable=0;html=1;;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="1">
+          <mxGeometry x="560" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-16" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.808;exitY=-0.067;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;curved=1;exitPerimeter=0;" edge="1" parent="1" source="SLdjuISg8A11YM6O4AhX-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="220.00099999999995" y="346.03999999999996" as="sourcePoint" />
+            <mxPoint x="356.96000000000004" y="360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="306.96000000000004" y="322" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-17" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Registration Details&lt;/font&gt;" style="edgeLabel;resizable=0;html=1;;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="SLdjuISg8A11YM6O4AhX-16">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-7" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-18" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.808;exitY=-0.067;exitDx=0;exitDy=0;entryX=0.175;entryY=-0.05;entryDx=0;entryDy=0;curved=1;exitPerimeter=0;entryPerimeter=0;" edge="1" parent="1" target="SLdjuISg8A11YM6O4AhX-3">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="344" as="sourcePoint" />
+            <mxPoint x="609.96" y="348" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="559.96" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-19" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Patient Report&lt;/font&gt;" style="edgeLabel;resizable=0;html=1;;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="SLdjuISg8A11YM6O4AhX-18">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-1" y="-3" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-20" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.439;entryY=0.017;entryDx=0;entryDy=0;curved=1;entryPerimeter=0;" edge="1" parent="1" source="SLdjuISg8A11YM6O4AhX-3" target="SLdjuISg8A11YM6O4AhX-6">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="621" y="307" as="sourcePoint" />
+            <mxPoint x="470" y="294" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="640" y="280" />
+              <mxPoint x="500" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-21" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Registration Details&lt;/font&gt;" style="edgeLabel;resizable=0;html=1;;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="SLdjuISg8A11YM6O4AhX-20">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="-1" y="-18" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-22" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.815;entryY=0.858;entryDx=0;entryDy=0;curved=1;entryPerimeter=0;exitX=0.333;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="SLdjuISg8A11YM6O4AhX-3" target="SLdjuISg8A11YM6O4AhX-6">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="677.5" y="464" as="sourcePoint" />
+            <mxPoint x="490" y="441" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="620" y="440" />
+              <mxPoint x="550" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-24" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Feedback&lt;/font&gt;" style="edgeLabel;resizable=0;html=1;;align=center;verticalAlign=middle;" connectable="0" vertex="1" parent="1">
+          <mxGeometry x="290" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="SLdjuISg8A11YM6O4AhX-25" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.342;entryY=0.967;entryDx=0;entryDy=0;curved=1;entryPerimeter=0;exitX=0.324;exitY=0.925;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="SLdjuISg8A11YM6O4AhX-6" target="SLdjuISg8A11YM6O4AhX-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="420" as="sourcePoint" />
+            <mxPoint x="190" y="438" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="380" y="510" />
+              <mxPoint x="230" y="520" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
