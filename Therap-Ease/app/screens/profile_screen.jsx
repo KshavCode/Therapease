@@ -1,5 +1,6 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import ProfileCard from "..\\components\\ProfileCard";
 
 const ColorPallete = {
   first: "#BEEF9E",
@@ -26,7 +27,7 @@ const styles = StyleSheet.create({
 function ProfileScreen() {
   return (
     <View style={styles.screen}>
-      <Text style={styles.text}>Profile</Text>
+      <ProfileCard/>
     </View>
   );
 }

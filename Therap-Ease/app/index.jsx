@@ -323,9 +323,15 @@ const App = () => {
         {/* Main Button */}
         <TouchableOpacity
           style={[styles.actionButton, { marginTop: 10, backgroundColor: ColorPallete.third }]}
-          onPress={() => navigation.navigate("main")}
+          onPress={() => navigation.navigate("patient_main")}
         >
-          <Text style={[styles.paragraph, { color: ColorPallete.fourth }]}>Open Main</Text>
+          <Text style={[styles.paragraph, { color: ColorPallete.fourth }]}>Open Patient</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, { marginTop: 10, backgroundColor: ColorPallete.third }]}
+          onPress={() => navigation.navigate("doctor_main")}
+        >
+          <Text style={[styles.paragraph, { color: ColorPallete.fourth }]}>Open Doctor</Text>
         </TouchableOpacity>
       </View>
     </View>
