@@ -54,7 +54,9 @@ const App = () => (
       {() => <HomeScreen role="patient" />}
     </Tab.Screen>
     <Tab.Screen name="Search" component={SearchScreen} />
-    <Tab.Screen name="Profile" component={ProfileScreen} />
+    <Tab.Screen name="Profile">
+      {() => <ProfileScreen role="doctor" />}
+    </Tab.Screen>
   </Tab.Navigator>
 );
 
