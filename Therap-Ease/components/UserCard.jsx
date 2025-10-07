@@ -1,14 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-const ColorPallete = {
-  first: "#BEEF9E",
-  second: "#A6C36F",
-  third: "#828C51",
-  fourth: "#335145",
-  fifth: "#1E352F",
-};
+import { ColorTheme } from "../constants/GlobalStyles.jsx";
 
 function UserCard({ username, role }) {
   return (
@@ -30,25 +23,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-start",
     alignItems: "center",
-    backgroundColor: ColorPallete.first,
+    backgroundColor: ColorTheme.first,
     width: "100%",
   },
   text: {
     fontSize: 25,
     fontWeight: "bold",
-    color: ColorPallete.first,
-    marginTop: "5%",
-    marginLeft: "5%",
+    color: ColorTheme.first,
+    marginTop: 15,
+    marginLeft: 20,
   },
   username: {
-    fontSize: 30,
+    fontSize: 40,
     marginTop: 0,
     color: "white",
   },
   card: {
-    width: "90%",
-    height: "18%",
-    backgroundColor: "green",
+    width: "95%",
+    height: "20%",
+    backgroundColor: ColorTheme.fourth,
     borderRadius: 10,
     shadowColor: "#000",
   },

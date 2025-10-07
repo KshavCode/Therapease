@@ -1,26 +1,19 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { ColorTheme } from "../../constants/GlobalStyles.jsx";
 import UserCard from "..\\components\\UserCard";
-
-const ColorPallete = {
-  first: "#BEEF9E",
-  second: "#A6C36F",
-  third: "#828C51",
-  fourth: "#335145",
-  fifth: "#1E352F",
-};
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: ColorPallete.first,
+    backgroundColor: ColorTheme.first,
   },
   text: {
     fontSize: 20,
     fontWeight: "bold",
-    color: ColorPallete.fifth,
+    color: ColorTheme.fifth,
   },
 });
 
