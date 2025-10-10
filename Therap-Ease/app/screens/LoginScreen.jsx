@@ -13,7 +13,6 @@ import {
 import * as Yup from "yup";
 import logoimg from "../../assets/images/logo.png";
 import { ColorTheme, styles } from "../../constants/GlobalStyles.jsx";
-import HomeScreen from "./HomeScreen";
 
 // Validation schemas
 const RegisterSchema = Yup.object().shape({
@@ -310,7 +309,7 @@ const LoginScreen = ( { navigation } ) => {
             styles.actionButton,
             { marginTop: 10, backgroundColor: ColorTheme.third },
           ]}
-          onPress={() => navigation.navigate(HomeScreen, { role: "patient" })}
+          onPress={() => navigation.navigate('MainApp', { role: "patient" })}
         >
           <Text style={[styles.paragraph, { color: ColorTheme.fourth }]}>
             Open Patient
@@ -321,7 +320,7 @@ const LoginScreen = ( { navigation } ) => {
             styles.actionButton,
             { marginTop: 10, backgroundColor: ColorTheme.third },
           ]}
-          onPress={() => navigation.navigate(HomeScreen, { role: "doctor" })}
+          onPress={() => navigation.navigate('MainApp', { role: "doctor" })}
         >
           <Text style={[styles.paragraph, { color: ColorTheme.fourth }]}>
             Open Doctor

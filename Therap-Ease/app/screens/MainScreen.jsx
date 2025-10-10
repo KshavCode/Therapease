@@ -2,14 +2,14 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import React from "react";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { ColorTheme } from "../../constants/GlobalStyles.jsx";
-import { HomeScreen } from "./HomeScreen.jsx";
-import { ProfileScreen } from "./ProfileScreen.jsx";
-import { SearchScreen } from "./SearchScreen.jsx";
+import HomeScreen from "./HomeScreen.jsx";
+import ProfileScreen from "./ProfileScreen.jsx";
+import SearchScreen from "./SearchScreen.jsx";
 
 
 const Tab = createBottomTabNavigator();
 
-const BottomNavigator = ( { role } ) => (
+const App = ( { role } ) => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
@@ -29,15 +29,15 @@ const BottomNavigator = ( { role } ) => (
     })}
   >
     <Tab.Screen name="Home">
-      {() => <HomeScreen role="patient" />}
+      {() => <HomeScreen role={role} />}
     </Tab.Screen>
     <Tab.Screen name="Search" component={SearchScreen} />
     <Tab.Screen name="Profile">
-      {() => <ProfileScreen role="patient" />}
+      {() => <ProfileScreen role={role} />}
     </Tab.Screen>
   </Tab.Navigator>
 );
 
-export default BottomNavigator;
+export default App;
 
 
