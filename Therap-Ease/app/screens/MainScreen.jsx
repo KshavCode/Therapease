@@ -13,6 +13,7 @@ const App = ( { role } ) => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
+      animation: 'shift',
       tabBarStyle: {
         backgroundColor: ColorTheme.fourth,
       },

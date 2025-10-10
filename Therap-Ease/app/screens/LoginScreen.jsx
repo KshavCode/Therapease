@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Yup from "yup";
 import logoimg from "../../assets/images/logo.png";
 import { ColorTheme, styles } from "../../constants/GlobalStyles.jsx";
@@ -66,7 +67,7 @@ const LoginScreen = ( { navigation } ) => {
   }, [showLogin]);
 
   return (
-    <View style={{ flex: 1, justifyContent: "center" }}>
+    <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
       <View style={styles.container}>
         <Image source={logoimg} style={styles.logo} />
 
@@ -105,7 +106,7 @@ const LoginScreen = ( { navigation } ) => {
             onSubmit={(values, { resetForm }) => {
               resetForm();
               setShowRegister(false);
-              navigation.replace("Home"); // Navigate to HomeScreen after submit
+              navigation.replace("Home"); 
             }}
           >
             {({
@@ -327,7 +328,7 @@ const LoginScreen = ( { navigation } ) => {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
