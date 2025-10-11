@@ -1,6 +1,8 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import img1 from '../../assets/images/banner1.png';
+import img2 from '../../assets/images/banner2.png';
 import { ColorTheme } from "../../constants/GlobalStyles.jsx";
 
 const styles = StyleSheet.create({
@@ -9,6 +11,7 @@ const styles = StyleSheet.create({
     backgroundColor: ColorTheme.first,
     justifyContent: "flex-start",
     alignItems: "center",
+    paddingTop: 10,
   },
 
   text: {
@@ -36,34 +39,120 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     shadowColor: "#000",
   },
+
+
+  scheduleOuter: {
+    width: "95%",
+    backgroundColor: ColorTheme.fourth,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginTop: "3%",
+  },
+  scheduleHeader: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: ColorTheme.first,
+    marginBottom: 8,
+  },
+  scheduleScroll: {
+    flexDirection: "row",
+  },
+  smallCard: {
+    width: 110,
+    height: 110,
+    borderRadius: 8,
+    backgroundColor: ColorTheme.third,
+    marginRight: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "black",
+  },
+  smallCardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  smallCardSub: {
+    fontSize: 12,
+    color: "black",
+  },
 });
 
-function SecondCard({role}) {
+function SecondCard({ role }) {
   if (role === "patient") {
     return (
-      <View style={[styles.card, {backgroundColor: ColorTheme.fifth, height: "50%", alignItems:"center", padding: "3%" }]}>
-        <Text style={[styles.text2, {color:ColorTheme.first}]}>Recommended Articles</Text>
-        <View style={[styles.card, {backgroundColor: "white", height: "36%", marginTop: "3%"}]}>
-        </View>
-        <View style={[styles.card, {backgroundColor: "white", height: "36%", marginTop: "5%"}]}>
-        </View>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: ColorTheme.fifth,
+            height: "50%",
+            alignItems: "center",
+            padding: "3%",
+          },
+        ]}
+      >
+        <Text style={[styles.text2, { color: ColorTheme.first }]}>
+          Recommended Articles
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => console.log("Banner 1 clicked")}
+          style={[styles.card, { height: "36%", marginTop: "3%", elevation: 5 }]}
+        >
+          <Image
+            source={img1}
+            style={{ width: "100%", height: "100%", borderRadius: 10 }}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => console.log("Banner 2 clicked")}
+          style={[styles.card, { height: "36%", marginTop: "5%", elevation: 5 }]}
+        >
+          <Image
+            source={img2}
+            style={{ width: "100%", height: "100%", borderRadius: 10 }}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
       </View>
     );
-  }
-  else {
+  } else {
     return null;
   }
 }
 
-function ThirdCard({role}) {
+function ThirdCard({ role }) {
   if (role === "patient") {
+    const items = [
+      { id: '1', title: "9:00 AM", sub: "Breakfast" },
+      { id: '2', title: "11:00 AM", sub: "Medicine" },
+      { id: '3', title: "2:00 PM", sub: "Doctor Appt" },
+      { id: '4', title: "4:00 PM", sub: "Walk" },
+      { id: '5', title: "7:00 PM", sub: "Dinner" },
+    ];
+
     return (
-      <View style={[styles.card, {backgroundColor: ColorTheme.fourth, height: "31%", alignItems:"center", padding: "3%" }]}>
-        <Text style={[styles.text2, {color:ColorTheme.first}]}>Today&apos;s Schedule</Text>
+      <View style={[styles.card, {backgroundColor: ColorTheme.fourth, height: "31%", alignItems:"center", padding: "2%" }]}>
+        <Text style={[styles.text2, {marginBottom:'2%'}]}>Today&apos;s Schedule</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scheduleScroll}
+        >
+          {items.map((it) => (
+            <TouchableOpacity key={it.id} style={styles.smallCard} onPress={() => console.log('pressed', it)}>
+              <Text style={styles.smallCardTitle}>{it.title}</Text>
+              <Text style={styles.smallCardSub}>{it.sub}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
     );
-  }
-  else {
+  } else {
     return null;
   }
 }
@@ -76,18 +165,16 @@ function UserCard({ username, role }) {
         {role === "doctor" ? `Dr. ${username}` : username}
       </Text>
     </View>
-  )
+  );
 }
 
 function HomeScreen({ role }) {
   return (
     <SafeAreaView style={styles.screen}>
-        <UserCard username="ABC XYZ" role={role} />
-        <SecondCard role={role} />
-        <ThirdCard role={role} />
+      <UserCard username="ABC XYZ" role={role} />
+      <SecondCard role={role} />
+      <ThirdCard role={role} />
     </SafeAreaView>
   );
 }
 export default HomeScreen;
-
-

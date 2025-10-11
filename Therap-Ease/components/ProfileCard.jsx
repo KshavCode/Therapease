@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: "100%",
     borderColor: ColorTheme.fourth,
-    borderWidth: 5,
+    borderWidth: 3,
     overflow: "hidden",
     backgroundColor: ColorTheme.fourth,
   },
@@ -101,11 +101,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 5,
     borderBottomWidth: 0.5,
-    borderBottomColor: ColorTheme.first,
+    borderBottomColor: ColorTheme.fifth,
   },
   label: {
     fontSize: 18,
-    color: ColorTheme.fifth,
+    color: ColorTheme.seventh,
     fontWeight: "bold",
     flex: 1,
   },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   error: {
-    color: "red",
+    color: ColorTheme.error,
     fontSize: 14,
   },
   saveBtn: {

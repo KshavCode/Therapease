@@ -1,11 +1,14 @@
 import { StyleSheet } from "react-native";
 
 export const ColorTheme = {
-  first: "#FFF2EF",
-  second: "#FFDBB6",
-  third: "#f7a5a5",
-  fourth: "#a47da0",
-  fifth: "#5D688A",
+  first: "#F8F9FA",
+  second: "#DEE2E6",
+  third: "#F8F9FA",
+  fourth: "#5CA4A9",
+  fifth: "#9BC4BC",
+  sixth: "#a6cbc3ff",
+  seventh: "#212529",
+  error: "#FF6B6B",
 };
 
 export const styles = StyleSheet.create({
@@ -21,7 +24,7 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
-    color: ColorTheme.second,
+    color: ColorTheme.first,
   },
   actionButton: {
     backgroundColor: ColorTheme.fifth,
@@ -43,7 +46,7 @@ export const styles = StyleSheet.create({
     borderColor: ColorTheme.fourth,
   },
   submitButton: {
-    backgroundColor: "green",
+    backgroundColor: ColorTheme.seventh,
     borderRadius: 8,
     paddingVertical: 10,
     marginTop: 10,
@@ -66,18 +69,18 @@ export const styles = StyleSheet.create({
     height: 20,
     width: 20,
     borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "black",
+    borderWidth: 1,
+    borderColor: ColorTheme.fourth,
     marginRight: 8,
   },
   radioSelected: {
-    backgroundColor: "green",
+    backgroundColor: ColorTheme.fourth,
   },
   radioLabel: {
     fontSize: 16,
   },
   errorText: {
-    color: ColorTheme.third,
+    color: ColorTheme.error,
     marginTop: 2,
     marginBottom: 5,
     fontSize: 12,

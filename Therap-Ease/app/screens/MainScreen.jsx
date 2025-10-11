@@ -17,8 +17,8 @@ const App = ( { role } ) => (
       tabBarStyle: {
         backgroundColor: ColorTheme.fourth,
       },
-      tabBarActiveTintColor: ColorTheme.first,
-      tabBarInactiveTintColor: ColorTheme.third,
+      tabBarActiveTintColor: ColorTheme.second,
+      tabBarInactiveTintColor: ColorTheme.sixth,
       tabBarIcon: ({ color, size }) => {
         let iconName;
         if (route.name === "Home") iconName = "home-outline";

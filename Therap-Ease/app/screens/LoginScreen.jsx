@@ -308,7 +308,7 @@ const LoginScreen = ( { navigation } ) => {
         <TouchableOpacity
           style={[
             styles.actionButton,
-            { marginTop: 10, backgroundColor: ColorTheme.third },
+            { marginTop: 10, backgroundColor: ColorTheme.second },
           ]}
           onPress={() => navigation.navigate('MainApp', { role: "patient" })}
         >
@@ -319,7 +319,7 @@ const LoginScreen = ( { navigation } ) => {
         <TouchableOpacity
           style={[
             styles.actionButton,
-            { marginTop: 10, backgroundColor: ColorTheme.third },
+            { marginTop: 10, backgroundColor: ColorTheme.second },
           ]}
           onPress={() => navigation.navigate('MainApp', { role: "doctor" })}
         >
