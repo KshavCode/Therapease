@@ -107,11 +107,12 @@ function SearchScreen() {
 
   const [query, setQuery] = useState("");
   const [filtered, setFiltered] = useState([]);
-  const [found, setFound] = useState(true);
+  const [notFound, setNotFound] = useState(true);
 
   const handleSearch = (text) => {
     setQuery(text);
     if (text.length > 0) {
+      setNotFound(true)
       const results = names.filter((item) =>
         item.name.toLowerCase().includes(text.toLowerCase())
       );
@@ -124,7 +125,7 @@ function SearchScreen() {
   const handleSelect = (name) => {
     setQuery(name);
     setFiltered([]);
-    setFound(true);
+    setNotFound(false);
     
   };
 
@@ -157,7 +158,7 @@ function SearchScreen() {
           />
         </View>
       )}
-      {found && (
+      {!notFound && (
         <ProfileCard name={'ABC'} />
       )}
     </View>

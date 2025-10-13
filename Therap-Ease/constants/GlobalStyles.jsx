@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 export const ColorTheme = {
   first: "#F8F9FA",
   second: "#DEE2E6",
-  third: "#F8F9FA",
+  third: "rgba(0, 0, 0, 0.7)",
   fourth: "#5CA4A9",
   fifth: "#9BC4BC",
   sixth: "#a6cbc3ff",

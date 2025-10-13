@@ -1,9 +1,30 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from "react-native";
 import profileimg from '../assets/images/user_placeholder.jpg';
 import { ColorTheme } from "../constants/GlobalStyles";
 
 
-export default function UserCard({name, role}) {
+const fetchData = (id) => {
+  let jsonData = {"id": 1, "name":"XYZ", "age":19, "height":`5'11`, "weight": '60kg', "gender":'Male', "bio":'ldjfdsjflkdjslkf\njksjfslkjdflksjfljskdf\nkjsdjflskjflksjdlfkjsdlfkjlkjlk', "location":"Delhi", "activity": "Mediocre", "joined_on":'23 August 2024', "badges":"Image Data Here"};
+  return jsonData;
+}
+
+export default function UserCard({id, name, role}) {
+  let data = fetchData(id)
+
+  const onBadge = (id) => {
+    let msg;
+    if (id===1) {
+      msg = '1 Year!'
+    }
+    else if (id===2) {
+      msg = '1 Month Consistency'
+    }
+    else if (id===3){
+      msg = '50 Sessions Completed'
+    }
+    ToastAndroid.show(msg, ToastAndroid.SHORT)
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.subBox}>
@@ -12,25 +33,62 @@ export default function UserCard({name, role}) {
         </View>
         <View style={styles.borderBox}>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
-            <Text style={[styles.text, styles.title]}>Name:</Text>
-            <Text style={[styles.text]}>{name}</Text>
+            <Text style={[styles.label]}>Name:</Text>
+            <Text style={[styles.value]}>{data.name}</Text>
           </View>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
-            <Text style={[styles.text, styles.title]}>Age:</Text>
-            <Text style={[styles.text]}>{name}</Text>
+            <Text style={[styles.label]}>Age:</Text>
+            <Text style={[styles.value]}>{data.age}</Text>
           </View>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
-            <Text style={[styles.text, styles.title]}>Height:</Text>
-            <Text style={[styles.text]}>{name}</Text>
+            <Text style={[styles.label]}>Height:</Text>
+            <Text style={[styles.value]}>{data.height}</Text>
           </View>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
-            <Text style={[styles.text, styles.title]}>Weight:</Text>
-            <Text style={[styles.text]}>{name}</Text>
+            <Text style={[styles.label]}>Weight:</Text>
+            <Text style={[styles.value]}>{data.weight}</Text>
           </View>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
-            <Text style={[styles.text, styles.title]}>Gender:</Text>
-            <Text style={[styles.text]}>{name}</Text>
+            <Text style={[styles.label]}>Gender:</Text>
+            <Text style={[styles.value]}>{data.gender}</Text>
           </View>
+        </View>
+      </View>
+      <View style={[styles.borderBox2, {height:'25%', justifyContent:'flex-start'}]}>
+          <Text style={[styles.label]}>Bio:</Text>
+          <Text style={[styles.value]}>{data.bio}</Text>
+      </View>
+      <View style={styles.borderBox2}>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+          <Text style={[styles.label]}>Location:</Text>
+          <Text style={[styles.value]}>{data.location}</Text>
+        </View>
+      </View>
+      <View style={styles.borderBox2}>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+          <Text style={[styles.label]}>Activity:</Text>
+          <Text style={[styles.value]}>{data.activity}</Text>
+        </View>
+      </View>
+      <View style={styles.borderBox2}>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}>
+          <Text style={[styles.label]}>Name:</Text>
+          <Text style={[styles.value]}>{data.joined_on}</Text>
+        </View>
+      </View>
+      <View style={styles.borderBox2}>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <Text style={[styles.label]}>Badges:</Text>
+          {/* <Text style={[styles.text]}>{data.badges}</Text> */}
+          <TouchableOpacity onPress={()=>onBadge(1)}>
+            <Image source={require("../assets/images/badge1.png")} style={styles.badge}/>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={()=>onBadge(2)}>
+            <Image source={require("../assets/images/badge2.png")} style={styles.badge}/>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={()=>onBadge(3)}>
+            <Image source={require("../assets/images/badge3.png")} style={styles.badge}/>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -43,15 +101,16 @@ const styles = StyleSheet.create({
     height: '90%',
     width: '95%',
     alignItems: 'center',
-    padding: '2%',
+    padding: 5,
+    paddingTop: 10,
+    borderRadius: 10
   },
   profilePicWrapper: {
     width: 120,
     height: 120,
     borderRadius: "100%",
-    borderColor: ColorTheme.fourth,
-    borderWidth: 2,
-    marginRight: '1%',
+    borderWidth: 0,
+    marginRight: 3,
     overflow: "hidden",
     backgroundColor: ColorTheme.fourth,
   },
@@ -67,18 +126,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   borderBox: {
-    borderWidth: 2,
     borderColor: ColorTheme.fourth,
     backgroundColor: ColorTheme.first,
     height: '100%',
     width: '60%',
-    padding: '3%',
+    padding: 10,
   },
-  title: {
+  borderBox2: {
+    borderColor: ColorTheme.fourth,
+    backgroundColor: ColorTheme.first,
+    height: '10%',
+    width: '99%',
+    justifyContent: 'center',
+    padding: 10,
+    marginTop: 10,
+  },
+  label: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: ColorTheme.fourth,
+    fontWeight: 'bold'
   },
-  text: {
+  value: {
     fontSize: 16,
+    color: ColorTheme.third
   },
+  badge: {
+    width: 40,
+    height: 40,
+  }
 });

@@ -40,7 +40,6 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
   },
 
-
   scheduleOuter: {
     width: "95%",
     backgroundColor: ColorTheme.fourth,
@@ -62,7 +61,7 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 8,
-    backgroundColor: ColorTheme.third,
+    backgroundColor: ColorTheme.first,
     marginRight: 10,
     justifyContent: "center",
     alignItems: "center",
