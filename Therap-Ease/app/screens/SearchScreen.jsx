@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ProfileCard from "../../components/ProfileCard.jsx";
 import { ColorTheme } from "../../constants/GlobalStyles.jsx";
 
 const styles = StyleSheet.create({
@@ -35,7 +36,7 @@ const styles = StyleSheet.create({
     width: "90%",
     backgroundColor: ColorTheme.second,
     borderRadius: 8,
-    height: "80%", // taller for better scrolling
+    height: "80%",
     paddingVertical: 5,
   },
   suggestionItem: {
@@ -106,6 +107,7 @@ function SearchScreen() {
 
   const [query, setQuery] = useState("");
   const [filtered, setFiltered] = useState([]);
+  const [found, setFound] = useState(true);
 
   const handleSearch = (text) => {
     setQuery(text);
@@ -122,6 +124,8 @@ function SearchScreen() {
   const handleSelect = (name) => {
     setQuery(name);
     setFiltered([]);
+    setFound(true);
+    
   };
 
   return (
@@ -152,6 +156,9 @@ function SearchScreen() {
             showsVerticalScrollIndicator={true}
           />
         </View>
+      )}
+      {found && (
+        <ProfileCard name={'ABC'} />
       )}
     </View>
   );
