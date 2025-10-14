@@ -1,9 +1,21 @@
 import React from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import img1 from '../../assets/images/banner1.png';
 import img2 from '../../assets/images/banner2.png';
 import { ColorTheme } from "../../constants/GlobalStyles.jsx";
+
+
+const fetchAppointments = () => {
+  // MAX, UPCOMING 3
+  let data = [
+    {"id":12321, "name":"Keshav", "date": '27 October', "time":'17:30'},
+    {"id":11354, "name":"Shivam", "date": '27 October', "time":'20:00'},
+    {"id":14354, "name":"Somay", "date": '28 October', "time":'09:00'}
+  ]
+  return data
+}
+
 
 const styles = StyleSheet.create({
   screen: {
@@ -76,6 +88,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "black",
   },
+  graph: {
+    width: 300,
+    height: 130,
+    resizeMode: 'stretch'
+  }
+
 });
 
 function SecondCard({ role }) {
@@ -98,29 +116,58 @@ function SecondCard({ role }) {
 
         <TouchableOpacity
           onPress={() => console.log("Banner 1 clicked")}
-          style={[styles.card, { height: "36%", marginTop: "3%", elevation: 5 }]}
+          style={[styles.card, { height: "40%", marginTop: 5, elevation: 5 }]}
         >
           <Image
             source={img1}
             style={{ width: "100%", height: "100%", borderRadius: 10 }}
-            resizeMode="cover"
+            resizeMode="stretch"
           />
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => console.log("Banner 2 clicked")}
-          style={[styles.card, { height: "36%", marginTop: "5%", elevation: 5 }]}
+          style={[styles.card, { height: "40%", marginTop: 10, elevation: 5}]}
         >
           <Image
             source={img2}
             style={{ width: "100%", height: "100%", borderRadius: 10 }}
-            resizeMode="cover"
+            resizeMode="stretch"
           />
         </TouchableOpacity>
       </View>
     );
   } else {
-    return null;
+    const appointmentData = fetchAppointments();
+    return (
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: ColorTheme.fifth,
+            height: "45%",
+            alignItems: "center",
+            padding: 10,
+          },
+        ]}
+      >
+        <Text style={[styles.text2, { color: ColorTheme.first }]}>
+          Upcoming Appointments
+        </Text>
+        <View style={[styles.card, { height: "80%", marginTop: 10, elevation: 5, backgroundColor: ColorTheme.first }]}>
+          <FlatList
+            data={appointmentData}
+            renderItem={({ item }) => (
+              <View style={{ padding: 10, borderBottomWidth: .3, borderColor: ColorTheme.fifth}}>
+                <Text style={[styles.smallCardTitle, {color:ColorTheme.fourth, textAlign:'center'}]}>{item.name}, #{item.id}</Text>
+                <Text style={{ color: ColorTheme.fourth, textAlign:'center' }}>{item.date} at {item.time}</Text>
+              </View>
+            )}
+            keyExtractor={item => item.id.toString()}
+          />
+        </View>
+      </View>
+    );
   }
 }
 
@@ -152,7 +199,11 @@ function ThirdCard({ role }) {
       </View>
     );
   } else {
-    return null;
+    return (
+    <View style={[styles.card, {backgroundColor: ColorTheme.fourth, height: "35%", alignItems:"center", padding: "2%" }]}>
+      <Text style={[styles.text2, {marginBottom:'2%'}]}>Patient Activity Chart</Text>
+      <Image source={require("../../assets/images/graph_placeholder.png")} style={styles.graph} />
+    </View>);
   }
 }
 

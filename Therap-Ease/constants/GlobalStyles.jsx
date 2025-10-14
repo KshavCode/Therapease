@@ -96,4 +96,17 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: ColorTheme.first,
   },
+  button: {
+    width:'95%',
+    borderRadius: 200, 
+    height:'7%',
+    backgroundColor: ColorTheme.fourth,
+    alignItems:'center',
+    justifyContent: 'center'
+  },
+  buttonText: {
+    fontSize:18, 
+    color:ColorTheme.first,
+    fontWeight: 'bold',
+  },
 });
