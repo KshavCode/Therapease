@@ -1,0 +1,55 @@
+CREATE DATABASE IF NOT EXISTS therapease;
+USE therapease;
+
+CREATE TABLE IF NOT EXISTS patients (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    name VARCHAR(50),
+    dob DATE,
+    height VARCHAR(6),      -- e.g., '5\'10"' stored as string
+    weight VARCHAR(5),      -- e.g., '115KG' stored as string
+    location TEXT,
+    activity ENUM('minimal', 'mediocre', 'maximum'),
+    bio TEXT,
+    badges_id INT DEFAULT NULL,
+    gender ENUM('male', 'female', 'other') NOT NULL,
+    joined_at DATE DEFAULT (CURRENT_DATE)
+    -- To enforce age between 12 and 80, you need to use triggers or check in app layer.
+);
+
+CREATE TABLE IF NOT EXISTS doctors (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    name VARCHAR(50),
+    age INT CHECK (age BETWEEN 25 AND 80),
+    speciality TEXT,
+    experience INT,
+    location TEXT,
+    availability ENUM('weekdays', 'weekends', 'all day'),
+    bio TEXT,
+    gender ENUM('male', 'female', 'other') NOT NULL,
+    joined_at DATE DEFAULT (CURRENT_DATE)
+);
+
+CREATE TABLE IF NOT EXISTS exercises (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE
+    -- Additional columns can be added later
+);
+
+CREATE TABLE IF NOT EXISTS appointments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    doctor_id INT NOT NULL,
+    patient_id INT NOT NULL,
+    description_patient TEXT NOT NULL,
+    description_doctor TEXT NOT NULL,
+    appointment_date DATE NOT NULL,
+    appointment_time TIME NOT NULL,
+    exercise_id INT,
+    reps INT,
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id),
+    FOREIGN KEY (patient_id) REFERENCES patients(id),
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id)
+);
