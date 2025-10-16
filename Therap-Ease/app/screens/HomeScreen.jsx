@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import React from "react";
 import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -172,25 +173,35 @@ function SecondCard({ role }) {
 }
 
 function ThirdCard({ role }) {
-  if (role === "patient") {
+  const navigation = useNavigation();  // Get the navigation object
+  if (role === 'patient') {
     const items = [
-      { id: '1', title: "9:00 AM", sub: "Breakfast" },
-      { id: '2', title: "11:00 AM", sub: "Medicine" },
-      { id: '3', title: "2:00 PM", sub: "Doctor Appt" },
-      { id: '4', title: "4:00 PM", sub: "Walk" },
-      { id: '5', title: "7:00 PM", sub: "Dinner" },
+      { id: '1', title: '9:00 AM', sub: 'Breakfast' },
+      { id: '2', title: '11:00 AM', sub: 'Medicine' },
+      { id: '3', title: '2:00 PM', sub: 'Doctor Appt' },
+      { id: '4', title: '4:00 PM', sub: 'Walk' },
+      { id: '5', title: '7:00 PM', sub: 'Dinner' },
     ];
 
     return (
-      <View style={[styles.card, {backgroundColor: ColorTheme.fourth, height: "31%", alignItems:"center", padding: "2%" }]}>
-        <Text style={[styles.text2, {marginBottom:'2%'}]}>Today&apos;s Schedule</Text>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: ColorTheme.fourth, height: '31%', alignItems: 'center', padding: '2%' },
+        ]}
+      >
+        <Text style={[styles.text2, { marginBottom: '2%' }]}>Today's Schedule</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scheduleScroll}
         >
           {items.map((it) => (
-            <TouchableOpacity key={it.id} style={styles.smallCard} onPress={() => console.log('pressed', it)}>
+            <TouchableOpacity
+              key={it.id}
+              style={styles.smallCard}
+              onPress={() => navigation.navigate('Exercise', {'name':it.sub})}  // Navigate to ExerciseScreen
+            >
               <Text style={styles.smallCardTitle}>{it.title}</Text>
               <Text style={styles.smallCardSub}>{it.sub}</Text>
             </TouchableOpacity>
@@ -200,10 +211,19 @@ function ThirdCard({ role }) {
     );
   } else {
     return (
-    <View style={[styles.card, {backgroundColor: ColorTheme.fourth, height: "35%", alignItems:"center", padding: "2%" }]}>
-      <Text style={[styles.text2, {marginBottom:'2%'}]}>Patient Activity Chart</Text>
-      <Image source={require("../../assets/images/graph_placeholder.png")} style={styles.graph} />
-    </View>);
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: ColorTheme.fourth, height: '35%', alignItems: 'center', padding: '2%' },
+        ]}
+      >
+        <Text style={[styles.text2, { marginBottom: '2%' }]}>Patient Activity Chart</Text>
+        <Image
+          source={require('../../assets/images/graph_placeholder.png')}
+          style={styles.graph}
+        />
+      </View>
+    );
   }
 }
 
