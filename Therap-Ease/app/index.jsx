@@ -1,4 +1,5 @@
 import { createStackNavigator } from '@react-navigation/stack';
+import ExerciseScreen from './screens/ExerciseScreen.jsx';
 import LoginScreen from './screens/LoginScreen.jsx';
 import MainScreen from './screens/MainScreen.jsx';
 
@@ -10,6 +11,9 @@ function MyStack() {
       <Stack.Screen name="Authenticate" component={LoginScreen} />
       <Stack.Screen name="MainApp">
         {({ route }) => <MainScreen role={route.params.role} />}
+      </Stack.Screen>
+      <Stack.Screen name="Exercise">
+        {({ route }) => <ExerciseScreen name={route.params.name} />}
       </Stack.Screen>
     </Stack.Navigator>
   );
