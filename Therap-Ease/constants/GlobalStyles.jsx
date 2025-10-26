@@ -81,7 +81,7 @@ export const styles = StyleSheet.create({
   },
   errorText: {
     color: ColorTheme.error,
-    marginTop: 2,
+    marginTop: 0,
     marginBottom: 5,
     fontSize: 12,
   },

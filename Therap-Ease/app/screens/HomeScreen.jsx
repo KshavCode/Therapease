@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     marginLeft: 15,
   },
   text2: {
-    fontSize: 30,
+    fontSize: 27,
     fontWeight: "bold",
     color: ColorTheme.first,
   },
@@ -90,8 +90,8 @@ const styles = StyleSheet.create({
     color: "black",
   },
   graph: {
-    width: 300,
-    height: 130,
+    width: '95%',
+    height: '75%',
     resizeMode: 'stretch'
   }
 
@@ -146,7 +146,7 @@ function SecondCard({ role }) {
           styles.card,
           {
             backgroundColor: ColorTheme.fifth,
-            height: "45%",
+            height: '45%',
             alignItems: "center",
             padding: 10,
           },
@@ -155,7 +155,7 @@ function SecondCard({ role }) {
         <Text style={[styles.text2, { color: ColorTheme.first }]}>
           Upcoming Appointments
         </Text>
-        <View style={[styles.card, { height: "80%", marginTop: 10, elevation: 5, backgroundColor: ColorTheme.first }]}>
+        <View style={[styles.card, { height: "80%", marginTop: 10, elevation: 5, backgroundColor: ColorTheme.first, justifyContent:'center' }]}>
           <FlatList
             data={appointmentData}
             renderItem={({ item }) => (
@@ -190,7 +190,7 @@ function ThirdCard({ role }) {
           { backgroundColor: ColorTheme.fourth, height: '31%', alignItems: 'center', padding: '2%' },
         ]}
       >
-        <Text style={[styles.text2, { marginBottom: '2%' }]}>Today's Schedule</Text>
+        <Text style={[styles.text2, { marginBottom: '2%' }]}>Today&apos;s Schedule</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

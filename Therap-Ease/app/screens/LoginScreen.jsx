@@ -227,7 +227,7 @@ const LoginScreen = ( { navigation } ) => {
             {
               height: loginAnim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, 260],
+                outputRange: [0, 220],
               }),
               opacity: loginAnim,
             },
