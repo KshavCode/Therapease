@@ -1,0 +1,13 @@
+Patient : 
+	Inputs : 7
+	Outputs : 
+Doctor : 
+	Inputs : 8
+	Outputs : 
+Camera : 
+	Inputs : 1
+
+Data Stores : Doctors, Patients, Exercises, Reports, Appointments
+
+
+	
