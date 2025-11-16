@@ -1,4 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import React from "react";
 import { FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -116,7 +117,7 @@ function SecondCard({ role }) {
         </Text>
 
         <TouchableOpacity
-          onPress={() => console.log("Banner 1 clicked")}
+          onPress={() => Linking.openURL("https://www.mayoclinic.org/healthy-lifestyle/fitness/in-depth/exercise/art-20048389")}
           style={[styles.card, { height: "40%", marginTop: 5, elevation: 5 }]}
         >
           <Image
@@ -127,7 +128,7 @@ function SecondCard({ role }) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => console.log("Banner 2 clicked")}
+          onPress={() => Linking.openURL("https://www.healthline.com/nutrition/10-benefits-of-exercise")}
           style={[styles.card, { height: "40%", marginTop: 10, elevation: 5}]}
         >
           <Image
@@ -176,39 +177,46 @@ function ThirdCard({ role }) {
   const navigation = useNavigation();  // Get the navigation object
   if (role === 'patient') {
     const items = [
-      { id: '1', title: '9:00 AM', sub: 'Breakfast' },
-      { id: '2', title: '11:00 AM', sub: 'Medicine' },
-      { id: '3', title: '2:00 PM', sub: 'Doctor Appt' },
-      { id: '4', title: '4:00 PM', sub: 'Walk' },
-      { id: '5', title: '7:00 PM', sub: 'Dinner' },
-    ];
+  { id: "1", title: "Squat", sub: "3 x 12" },
+  { id: "2", title: "Bicep Curl", sub: "4 x 10" },
+  { id: "3", title: "Leg Raise", sub: "3 x 60s" },
+  { id: "4", title: "Side Bend", sub: "3 x 12" },
+  { id: "5", title: "Knee Ext.", sub: "2 x 5" },
+];
 
-    return (
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: ColorTheme.fourth, height: '31%', alignItems: 'center', padding: '2%' },
-        ]}
-      >
-        <Text style={[styles.text2, { marginBottom: '2%' }]}>Today&apos;s Schedule</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scheduleScroll}
+return (
+  <View
+    style={[
+      styles.card,
+      { backgroundColor: ColorTheme.fourth, height: "31%", alignItems: "center", padding: "2%" },
+    ]}
+  >
+    <Text style={[styles.text2, { marginBottom: "2%" }]}>Today&apos;s Exercises</Text>
+
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.scheduleScroll}
+    >
+      {items.map((it) => (
+        <TouchableOpacity
+          key={it.id}
+          style={styles.smallCard}
+          onPress={() =>
+            navigation.navigate("Exercise", {
+              name: it.sub,
+              sub: it.sub,
+              time: it.title,
+            })
+          }
         >
-          {items.map((it) => (
-            <TouchableOpacity
-              key={it.id}
-              style={styles.smallCard}
-              onPress={() => navigation.navigate('Exercise', {'name':it.sub})}  // Navigate to ExerciseScreen
-            >
-              <Text style={styles.smallCardTitle}>{it.title}</Text>
-              <Text style={styles.smallCardSub}>{it.sub}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-    );
+          <Text style={styles.smallCardTitle}>{it.title}</Text>
+          <Text style={styles.smallCardSub}>{it.sub}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
+);
   } else {
     return (
       <View

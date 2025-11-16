@@ -4,11 +4,10 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Image,
-  Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Yup from "yup";
@@ -167,7 +166,7 @@ const LoginScreen = ( { navigation } ) => {
                 {showDatePicker && (
                   <DateTimePicker
                     mode="date"
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    display="default"
                     value={new Date()}
                     maximumDate={new Date()}
                     onChange={(event, selectedDate) => {
