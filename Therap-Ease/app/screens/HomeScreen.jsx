@@ -177,11 +177,11 @@ function ThirdCard({ role }) {
   const navigation = useNavigation();  // Get the navigation object
   if (role === 'patient') {
     const items = [
-  { id: "1", title: "Squat", sub: "3 x 12" },
-  { id: "2", title: "Bicep Curl", sub: "4 x 10" },
-  { id: "3", title: "Leg Raise", sub: "3 x 60s" },
-  { id: "4", title: "Side Bend", sub: "3 x 12" },
-  { id: "5", title: "Knee Ext.", sub: "2 x 5" },
+  { id: "1", title: "Squat", sub: "3 x 12", reps: 5, sets: 3, doctor: "Dr. ABC", endDate: "28 Jan", notes: "Focus on form" },
+  { id: "2", title: "Bicep Curl", sub: "4 x 10", reps: 5, sets: 3, doctor: "Dr. ABC", endDate: "7 Dec", notes: "Before breakfast" },
+  { id: "3", title: "Leg Raise", sub: "3 x 60s", reps: 5, sets: 3, doctor: "Dr. ABC", endDate: "8 Dec", notes: "After dinner" },
+  { id: "4", title: "Side Bend", sub: "3 x 12", reps: 5, sets: 3, doctor: "Dr. ABC", endDate: "20 Jan", notes: "take 30 second break in between of sets" },
+  { id: "5", title: "Knee Ext.", sub: "2 x 5", reps: 5, sets: 3, doctor: "Dr. ABC", endDate: "5 Dec", notes: "one last session and then you will be good to go :)" },
 ];
 
 return (
@@ -204,9 +204,12 @@ return (
           style={styles.smallCard}
           onPress={() =>
             navigation.navigate("Exercise", {
-              name: it.sub,
-              sub: it.sub,
-              time: it.title,
+              name: it.title,
+              reps: it.reps,
+              sets: it.sets,
+              doctor: it.doctor,
+              endDate: it.endDate,
+              notes: it.notes,
             })
           }
         >

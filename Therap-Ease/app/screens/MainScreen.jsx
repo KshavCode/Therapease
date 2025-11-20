@@ -4,8 +4,8 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { ColorTheme } from "../../constants/GlobalStyles.jsx";
 import HomeScreen from "./HomeScreen.jsx";
 import PatientsScreen from "./PatientsScreen.jsx";
-import ProfileScreen from "./ProfileScreen.jsx";
 import SearchScreen from "./SearchScreen.jsx";
+import SettingsScreen from "./SettingsScreen.jsx";
 
 const Tab = createBottomTabNavigator();
 
@@ -24,7 +24,7 @@ const App = ({ role }) => {
             let iconName;
             if (route.name === "Home") iconName = "home-outline";
             else if (route.name === "Search") iconName = "search-outline";
-            else if (route.name === "Profile") iconName = "person-outline";
+            else if (route.name === "Settings") iconName = "person-outline";
             else if (route.name === "Patients") iconName = "people-outline";
             return <Ionicons name={iconName} size={size} color={color} />;
           },
@@ -35,8 +35,8 @@ const App = ({ role }) => {
           <Tab.Screen name="Patients" component={PatientsScreen} />
         )}
         <Tab.Screen name="Search" component={SearchScreen} />
-        <Tab.Screen name="Profile">
-          {() => <ProfileScreen role={role} />}
+        <Tab.Screen name="Settings">
+          {() => <SettingsScreen role={role} />}
         </Tab.Screen>
       </Tab.Navigator>
     );

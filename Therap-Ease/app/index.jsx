@@ -13,7 +13,7 @@ function MyStack() {
         {({ route }) => <MainScreen role={route.params.role} />}
       </Stack.Screen>
       <Stack.Screen name="Exercise">
-        {({ route }) => <ExerciseScreen name={route.params.name} />}
+        {({ route }) => <ExerciseScreen name={route.params.name} reps={route.params.reps} sets={route.params.sets} doctor={route.params.doctor} endDate={route.params.endDate} notes={route.params.notes} />}
       </Stack.Screen>
     </Stack.Navigator>
   );

@@ -1,3 +1,4 @@
+import { ColorTheme } from "@/constants/GlobalStyles";
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
@@ -159,7 +160,7 @@ const stylesLocal = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 12 },
   title: { fontSize: 20, fontWeight: "700" },
   headerRight: { flexDirection: "row", alignItems: "center" },
-  addBtn: { backgroundColor: "#1e88e5", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  addBtn: { backgroundColor: ColorTheme.fourth, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   addText: { color: "#fff", fontWeight: "700" },
 
   searchWrap: { paddingHorizontal: 16, paddingTop: 10 },
@@ -197,7 +198,7 @@ const stylesLocal = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  avatarText: { fontWeight: "800", color: "#2c3a99" },
+  avatarText: { fontWeight: "800", color: ColorTheme.fourth },
   name: { fontSize: 16, fontWeight: "700" },
   meta: { marginTop: 2, color: "#666" },
   chev: { color: "#999", fontSize: 14 },
