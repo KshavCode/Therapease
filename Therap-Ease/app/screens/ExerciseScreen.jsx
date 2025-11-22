@@ -1,18 +1,38 @@
 import * as ImagePicker from "expo-image-picker";
 import React from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    ToastAndroid,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { ColorTheme } from "../../constants/GlobalStyles";
 
-const ExerciseScreen = ({ name, reps, sets, doctor, endDate, notes }) => {
+const ExerciseScreen = (props) => {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+
+  // Use URL params if present, otherwise fall back to props, otherwise defaults
+  const name = params.name || props.name || "Squats";
+  const reps = params.reps || props.reps || "10";
+  const sets = params.sets || props.sets || "3";
+  const doctor = params.doctor || props.doctor || "Dr. Sharma";
+  const endDate = params.endDate || props.endDate || "2025-12-31";
+  const notes =
+    params.notes ||
+    props.notes ||
+    "Keep your back straight and move in a slow, controlled manner.";
+  const exerciseKey = params.exerciseKey || props.exerciseKey || "squat";
+
+  // Optional patient context (from Patients screen / Home)
+  const patientName = params.patientName || props.patientName || null;
+  const patientId = params.patientId || props.patientId || null;
+
   const [image, setImage] = React.useState(null);
 
   const spawnToast = async () => {
@@ -32,12 +52,29 @@ const ExerciseScreen = ({ name, reps, sets, doctor, endDate, notes }) => {
       quality: 1,
     });
 
-    console.log(result);
-
     if (!result.canceled) {
       setImage(result.assets[0].uri);
       ToastAndroid.show("Video selected successfully.", ToastAndroid.SHORT);
     }
+  };
+
+  const handleStartLive = () => {
+    // Go to the live tracking screen and pass exercise + patient details
+    router.push({
+      pathname: "/live-workout",
+      params: {
+        exerciseKey,
+        name,
+        reps: String(reps),
+        sets: String(sets),
+        doctor,
+        endDate,
+        notes,
+        // forward patient information if available
+        patientName: patientName || "",
+        patientId: patientId || "",
+      },
+    });
   };
 
   return (
@@ -58,8 +95,28 @@ const ExerciseScreen = ({ name, reps, sets, doctor, endDate, notes }) => {
           </View>
           <Text style={styles.headerTitle}>All the best!</Text>
           <Text style={styles.headerSubtitle}>
-            Complete your exercise and upload a short video for your doctor.
+            Complete your exercise and either track it live or upload a short
+            video for your doctor.
           </Text>
+        </View>
+
+        {/* Live tracking card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Live Tracking</Text>
+          <Text style={styles.sectionSubtitle}>
+            Use your phone camera to track your reps, angles and form in real
+            time.
+          </Text>
+
+          <TouchableOpacity style={styles.liveButton} onPress={handleStartLive}>
+            <Ionicons
+              name="walk-outline"
+              size={20}
+              color={ColorTheme.first}
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.liveButtonText}>Start Live Session</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Upload section */}
@@ -101,7 +158,11 @@ const ExerciseScreen = ({ name, reps, sets, doctor, endDate, notes }) => {
                 onPress={() => setImage(null)}
                 style={styles.deleteButton}
               >
-                <Ionicons name="trash-sharp" size={20} color={ColorTheme.error} />
+                <Ionicons
+                  name="trash-sharp"
+                  size={20}
+                  color={ColorTheme.error}
+                />
               </TouchableOpacity>
             </View>
           )}
@@ -110,6 +171,17 @@ const ExerciseScreen = ({ name, reps, sets, doctor, endDate, notes }) => {
         {/* Details card */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Exercise Details</Text>
+
+          {/* Show patient if available */}
+          {patientName && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Patient</Text>
+              <Text style={styles.detailValue}>
+                {patientName}
+                {patientId ? ` (ID: ${patientId})` : ""}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Name</Text>
@@ -233,6 +305,22 @@ const styles = StyleSheet.create({
     color: ColorTheme.fourth,
     opacity: 0.8,
     marginBottom: 12,
+  },
+
+  // Live button
+  liveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: ColorTheme.fourth,
+  },
+  liveButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: ColorTheme.first,
   },
 
   // Upload
