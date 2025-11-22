@@ -1,12 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Linking, Alert } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Linking,
+  Alert,
+  Platform,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Camera } from "expo-camera";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ColorTheme } from "../../constants/GlobalStyles";
 
-const API_BASE = "http://192.168.0.100:8000"; // <-- change to your FastAPI IP/port
+const API_BASE = "http://192.168.1.9:8000"; // <-- your FastAPI IP/port
 
 export default function LiveWorkoutScreen() {
   const router = useRouter();
@@ -45,7 +53,7 @@ export default function LiveWorkoutScreen() {
     return () => clearInterval(id);
   }, [running]);
 
-  // ⚠ dummy tracking to simulate reps; replace later with TFJS/Mediapipe
+  // dummy tracking to simulate reps; replace later with TFJS/Mediapipe
   useEffect(() => {
     if (!running || sessionEnded) return;
 
@@ -110,50 +118,59 @@ export default function LiveWorkoutScreen() {
     try {
       const duration = elapsed;
       const avgSpeed = duration > 0 ? count / duration : 0;
-      const formScore = formLabel === "Good" ? 0.9 : 0.7; // fake score for now
+      const formScore = formLabel === "Good" ? 0.9 : 0.7; // temporary score
+      const exerciseName = name || exerciseKey;
 
       const res = await fetch(`${API_BASE}/generate_report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patient_name: "Somay Singh", // later pass real patient
+          patient_name: "Somay Singh", // later dynamic
           patient_id: "P-2025-001",
-          age: 47,
-          exercise: name,
+          age: 42, // or dynamic
+          exercise: exerciseName,
           exercise_key: exerciseKey,
           reps: count,
-          duration,
+          duration: duration,
           avg_speed: avgSpeed,
           form_score: formScore,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Report generation failed");
+        console.log("Response error:", res.status);
+        Alert.alert("Error", "Failed to generate PDF report.");
+        return;
       }
-      const data = await res.json(); // { url: "http://.../reports/xyz.pdf" }
-      setPdfUrl(data.url);
-      Alert.alert("Report ready", "Tap 'Open PDF' to view or download.");
+
+      const data = await res.json(); // { url: "/reports/xyz.pdf" }
+      const fullUrl = `${API_BASE}${data.url}`;
+      setPdfUrl(fullUrl);
+
+      Alert.alert("Report Ready", "Tap 'Open PDF' to view or download.");
     } catch (e) {
-      console.log(e);
-      Alert.alert("Error", "Could not generate report.");
+      console.log("PDF generation error:", e);
+      Alert.alert("Error", "Something went wrong while generating the report.");
     }
   };
 
   const handleOpenPdf = () => {
     if (pdfUrl) {
       Linking.openURL(pdfUrl);
+    } else {
+      Alert.alert("No PDF", "Generate the PDF first.");
     }
   };
 
-  if (hasPermission === null) {
+  if (hasPermission === null && Platform.OS !== "web") {
     return (
       <SafeAreaView style={styles.center}>
         <Text>Requesting camera permission…</Text>
       </SafeAreaView>
     );
   }
-  if (hasPermission === false) {
+
+  if (hasPermission === false && Platform.OS !== "web") {
     return (
       <SafeAreaView style={styles.center}>
         <Text style={{ textAlign: "center", paddingHorizontal: 16 }}>
@@ -191,14 +208,29 @@ export default function LiveWorkoutScreen() {
         </View>
       </View>
 
-      {/* Camera */}
+      {/* Camera + overlay */}
       <View style={styles.cameraWrapper}>
-        <Camera
-          style={styles.camera}
-          type={Camera.Constants.Type.front}
-          ref={cameraRef}
-          ratio="16:9"
-        />
+        {Platform.OS === "web" ? (
+          <View
+            style={[
+              styles.camera,
+              { alignItems: "center", justifyContent: "center" },
+            ]}
+          >
+            <Text style={{ color: "#fff", padding: 12, textAlign: "center" }}>
+              Camera preview is not available on web.{"\n"}
+              Please run this screen in Expo Go on a physical device.
+            </Text>
+          </View>
+        ) : (
+          <Camera
+            style={styles.camera}
+            type={Camera.Constants?.Type?.front}
+            ref={cameraRef}
+            ratio="16:9"
+          />
+        )}
+
         <View style={styles.cameraOverlay}>
           <View style={styles.badgeRow}>
             <View style={styles.badge}>

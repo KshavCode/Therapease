@@ -21,7 +21,6 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="exercise" options={{ headerShown: false }} />
         <Stack.Screen name="live-workout" options={{ headerShown: false }} />
-
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

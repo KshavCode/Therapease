@@ -1,5 +1,5 @@
-import ExerciseScreen from "./screens/ExerciseScreen";
+import LiveWorkoutScreen from "./screens/LiveWorkoutScreen";
 
-export default function ExerciseRoute(props) {
-  return <ExerciseScreen {...props} />;
+export default function LiveWorkoutRoute(props) {
+  return <LiveWorkoutScreen {...props} />;
 }
