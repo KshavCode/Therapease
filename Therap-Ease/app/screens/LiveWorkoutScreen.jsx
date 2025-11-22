@@ -37,13 +37,14 @@ export default function LiveWorkoutScreen() {
 
   const [angle, setAngle] = useState(0);
   const [stage, setStage] = useState("-");
-  const [count, setCount] = useState(0); // reps in current set
+  const [count, setCount] = useState(0);                // reps in current set
+  const [totalRepsDone, setTotalRepsDone] = useState(0); // reps across all sets
   const [formLabel, setFormLabel] = useState("Good");
-  const [elapsed, setElapsed] = useState(0); // total session time
+  const [elapsed, setElapsed] = useState(0);            // total session time (sec)
   const [running, setRunning] = useState(true);
-  const [sessionEnded, setSessionEnded] = useState(false); // all sets done OR user ended
-  const [setCompleted, setSetCompleted] = useState(false); // current set done, waiting next
-  const [currentSet, setCurrentSet] = useState(1); // 1..totalSets
+  const [sessionEnded, setSessionEnded] = useState(false); // all sets done OR ended manually
+  const [setCompleted, setSetCompleted] = useState(false); // current set done
+  const [currentSet, setCurrentSet] = useState(1);      // 1..totalSets
   const [pdfUrl, setPdfUrl] = useState(null);
 
   // ask camera permission
@@ -73,54 +74,70 @@ export default function LiveWorkoutScreen() {
     const id = setInterval(() => {
       setAngle((prev) => {
         const next = prev > 160 ? 40 : prev + 25;
-        let newStage = stage;
-        let newCount = count;
 
-        if (exerciseKey === "bicep_curl" || exerciseKey === "shoulder_abduction") {
-          if (next > 150) newStage = "down";
-          if (next < 50 && stage === "down") {
-            newStage = "up";
-            newCount = count + 1;
-          }
-        } else {
-          if (next > 160) newStage = "up";
-          if (next < 90 && stage === "up") {
-            newStage = "down";
-            newCount = count + 1;
-          }
-        }
+        setStage((prevStage) => {
+          let newStage = prevStage;
 
-        if (newCount !== count) {
-          setCount(newCount);
+          // decide rep event based on angle + stage
+          let repHappened = false;
 
-          if (newCount >= repsTarget) {
-            // current set completed
-            setSetCompleted(true);
-            setRunning(false);
-
-            if (currentSet >= totalSets) {
-              // all sets completed
-              setSessionEnded(true);
+          if (exerciseKey === "bicep_curl" || exerciseKey === "shoulder_abduction") {
+            if (next > 150) newStage = "down";
+            if (next < 50 && prevStage === "down") {
+              newStage = "up";
+              repHappened = true;
+            }
+          } else {
+            if (next > 160) newStage = "up";
+            if (next < 90 && prevStage === "up") {
+              newStage = "down";
+              repHappened = true;
             }
           }
-        }
 
-        setStage(newStage);
+          if (repHappened) {
+            // increment reps for this set
+            setCount((prevCount) => {
+              const newCount = prevCount + 1;
+              // also update total reps done
+              setTotalRepsDone((prevTotal) => prevTotal + 1);
+
+              // if this set finished
+              if (newCount >= repsTarget) {
+                setSetCompleted(true);
+                setRunning(false);
+
+                // if this was the last set, end the full session
+                if (currentSet >= totalSets) {
+                  setSessionEnded(true);
+                }
+              }
+
+              return newCount;
+            });
+          }
+
+          return newStage;
+        });
+
         setFormLabel(next > 170 || next < 30 ? "Check Form" : "Good");
         return next;
       });
     }, 700);
 
     return () => clearInterval(id);
-  }, [running, sessionEnded, setCompleted, stage, count, exerciseKey, repsTarget, currentSet, totalSets]);
+  }, [running, sessionEnded, setCompleted, exerciseKey, repsTarget, currentSet, totalSets]);
 
   const handleEndSession = () => {
     setRunning(false);
     setSessionEnded(true);
+    setSetCompleted(false);
   };
 
   const handleStartNextSet = () => {
     if (currentSet >= totalSets) return;
+    // move to next set, keep totalRepsDone
+    setCurrentSet((prev) => Math.min(prev + 1, totalSets));
     setCount(0);
     setAngle(0);
     setStage("-");
@@ -128,13 +145,13 @@ export default function LiveWorkoutScreen() {
     setSetCompleted(false);
     setRunning(true);
     setPdfUrl(null);
-    setCurrentSet((prev) => Math.min(prev + 1, totalSets));
   };
 
   const handleRedo = () => {
     setAngle(0);
     setStage("-");
     setCount(0);
+    setTotalRepsDone(0);
     setFormLabel("Good");
     setElapsed(0);
     setSessionEnded(false);
@@ -148,59 +165,52 @@ export default function LiveWorkoutScreen() {
     router.back();
   };
 
-  // total reps across all sets
-  const completedSetsBeforeCurrent = sessionEnded ? totalSets : currentSet - 1;
-  const totalReps = completedSetsBeforeCurrent * repsTarget + count;
-
   const handleGeneratePdf = async () => {
     try {
-        const duration = elapsed;
-        const avgSpeed = duration > 0 ? totalReps / duration : 0;
-        const formScore = formLabel === "Good" ? 0.9 : 0.7; // temporary score
-        const exerciseName = name || exerciseKey;
+      const duration = elapsed; // seconds
+      const totalReps = totalRepsDone;
+      const assignedTotalReps = repsTarget * totalSets;
+      const avgTime = totalReps > 0 ? duration / totalReps : 0; // sec per rep
+      const formScore = formLabel === "Good" ? 0.9 : 0.7; // placeholder score
+      const exerciseName = name || exerciseKey;
 
-        const payload = {
+      const payload = {
         patient_name: patientName || "Somay Singh",
         patient_id: patientId || "P-2025-001",
         exercise: exerciseName,
         exercise_key: exerciseKey,
-        reps: totalReps,
+
+        reps: totalReps,               // actual reps
+        assigned_reps: assignedTotalReps, // target reps across all sets
+
         sets: totalSets,
         duration,
-        avg_speed: avgSpeed,
+        avg_time: avgTime,
         form_score: formScore,
-        };
+      };
 
-        console.log("📤 Sending report payload:", payload);
+      console.log("Sending report payload:", payload);
 
-        const res = await fetch(`${API_BASE}/generate_report`, {
+      const res = await fetch(`${API_BASE}/generate_report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        });
+      });
 
-        console.log("📥 Report response status:", res.status);
-
-        if (!res.ok) {
-        const errText = await res.text();
-        console.log("❌ Report error body:", errText);
-        Alert.alert(
-            "Error",
-            `Failed to generate PDF report (status ${res.status}). Check backend logs.`
-        );
+      if (!res.ok) {
+        console.log("Response error:", res.status);
+        Alert.alert("Error", "Failed to generate PDF report.");
         return;
-        }
+      }
 
-        const data = await res.json(); // { url: "/reports/xyz.pdf" }
-        console.log("✅ Report response JSON:", data);
+      const data = await res.json(); // { url: "/reports/xyz.pdf" }
+      const fullUrl = `${API_BASE}${data.url}`;
+      setPdfUrl(fullUrl);
 
-        const fullUrl = `${API_BASE}${data.url}`;
-        setPdfUrl(fullUrl);
-
-        Alert.alert("Report Ready", "Tap 'Open PDF' to view or download.");
+      Alert.alert("Report Ready", "Tap 'Open PDF' to view or download.");
     } catch (e) {
-        console.log("💥 PDF generation error:", e);
-        Alert.alert("Error", "Something went wrong while generating the report.");
+      console.log("PDF generation error:", e);
+      Alert.alert("Error", "Something went wrong while generating the report.");
     }
   };
 
@@ -329,12 +339,14 @@ export default function LiveWorkoutScreen() {
                 ]}
               />
             </View>
-            <Text style={styles.progressText}>{progressPercent}% of this set</Text>
+            <Text style={styles.progressText}>
+              {progressPercent}% of this set
+            </Text>
           </View>
         </View>
       </View>
 
-      {/* Bottom panel: summary + sets + PDF after completion */}
+      {/* Bottom panel */}
       <View style={styles.bottomPanel}>
         <View style={styles.statsRow}>
           <View style={styles.stat}>
@@ -351,16 +363,12 @@ export default function LiveWorkoutScreen() {
             </Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>Exercise</Text>
-            <Text style={styles.statValue}>{exerciseKey}</Text>
+            <Text style={styles.statLabel}>Total Reps Done</Text>
+            <Text style={styles.statValue}>{totalRepsDone}</Text>
           </View>
         </View>
 
-        {/* States:
-            - running & not setCompleted & not sessionEnded  -> End Session
-            - setCompleted & !sessionEnded                   -> Start Next Set
-            - sessionEnded                                   -> Session completed + PDF
-        */}
+        {/* State logic */}
         {!sessionEnded && !setCompleted && (
           <TouchableOpacity
             style={[styles.mainBtn, styles.stopBtn]}
@@ -382,7 +390,7 @@ export default function LiveWorkoutScreen() {
               Set {currentSet} completed
             </Text>
             <Text style={styles.endSub}>
-              Reps this set: {count} • Total reps: {totalReps}
+              Reps this set: {count} • Total reps: {totalRepsDone}
             </Text>
 
             <View style={styles.endButtonsRow}>
@@ -415,7 +423,7 @@ export default function LiveWorkoutScreen() {
           <View style={styles.endActions}>
             <Text style={styles.endTitle}>Session completed</Text>
             <Text style={styles.endSub}>
-              Total reps: {totalReps} • Duration: {elapsed.toFixed(1)} sec
+              Total reps: {totalRepsDone} • Duration: {elapsed.toFixed(1)} sec
             </Text>
 
             <View style={styles.endButtonsRow}>
@@ -605,6 +613,6 @@ const styles = StyleSheet.create({
   secondaryBtn: { flex: 0.48, backgroundColor: "#e5e7eb" },
   openBtn: {
     marginTop: 8,
-    backgroundColor: "#dbeafe",
+    backgroundColor: "#6b7280",
   },
 });
