@@ -29,6 +29,10 @@ const ExerciseScreen = (props) => {
     "Keep your back straight and move in a slow, controlled manner.";
   const exerciseKey = params.exerciseKey || props.exerciseKey || "squat";
 
+  // Optional patient context (from Patients screen / Home)
+  const patientName = params.patientName || props.patientName || null;
+  const patientId = params.patientId || props.patientId || null;
+
   const [image, setImage] = React.useState(null);
 
   const spawnToast = async () => {
@@ -55,7 +59,7 @@ const ExerciseScreen = (props) => {
   };
 
   const handleStartLive = () => {
-    // Go to the live tracking screen and pass exercise details
+    // Go to the live tracking screen and pass exercise + patient details
     router.push({
       pathname: "/live-workout",
       params: {
@@ -66,6 +70,9 @@ const ExerciseScreen = (props) => {
         doctor,
         endDate,
         notes,
+        // forward patient information if available
+        patientName: patientName || "",
+        patientId: patientId || "",
       },
     });
   };
@@ -164,6 +171,17 @@ const ExerciseScreen = (props) => {
         {/* Details card */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Exercise Details</Text>
+
+          {/* Show patient if available */}
+          {patientName && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Patient</Text>
+              <Text style={styles.detailValue}>
+                {patientName}
+                {patientId ? ` (ID: ${patientId})` : ""}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Name</Text>

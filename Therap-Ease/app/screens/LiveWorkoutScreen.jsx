@@ -23,23 +23,36 @@ export default function LiveWorkoutScreen() {
   const exerciseKey = params.exerciseKey || "squat";
   const name = params.name || "Squats";
   const repsTarget = Number(params.reps || 10);
-  const sets = params.sets || "3";
+
+  const setsParam = params.sets || "3";
+  const totalSets = Number(setsParam || 1);
+
   const doctor = params.doctor || "Dr. Sharma";
+
+  const patientName = params.patientName || "";
+  const patientId = params.patientId || "";
 
   const [hasPermission, setHasPermission] = useState(null);
   const cameraRef = useRef(null);
 
   const [angle, setAngle] = useState(0);
   const [stage, setStage] = useState("-");
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0); // reps in current set
   const [formLabel, setFormLabel] = useState("Good");
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(0); // total session time
   const [running, setRunning] = useState(true);
-  const [sessionEnded, setSessionEnded] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false); // all sets done OR user ended
+  const [setCompleted, setSetCompleted] = useState(false); // current set done, waiting next
+  const [currentSet, setCurrentSet] = useState(1); // 1..totalSets
   const [pdfUrl, setPdfUrl] = useState(null);
 
   // ask camera permission
   useEffect(() => {
+    if (Platform.OS === "web") {
+      // skip permission on web (we show placeholder)
+      setHasPermission(true);
+      return;
+    }
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
       setHasPermission(status === "granted");
@@ -55,7 +68,7 @@ export default function LiveWorkoutScreen() {
 
   // dummy tracking to simulate reps; replace later with TFJS/Mediapipe
   useEffect(() => {
-    if (!running || sessionEnded) return;
+    if (!running || sessionEnded || setCompleted) return;
 
     const id = setInterval(() => {
       setAngle((prev) => {
@@ -79,9 +92,16 @@ export default function LiveWorkoutScreen() {
 
         if (newCount !== count) {
           setCount(newCount);
+
           if (newCount >= repsTarget) {
-            setSessionEnded(true);
+            // current set completed
+            setSetCompleted(true);
             setRunning(false);
+
+            if (currentSet >= totalSets) {
+              // all sets completed
+              setSessionEnded(true);
+            }
           }
         }
 
@@ -92,11 +112,23 @@ export default function LiveWorkoutScreen() {
     }, 700);
 
     return () => clearInterval(id);
-  }, [running, sessionEnded, stage, count, exerciseKey, repsTarget]);
+  }, [running, sessionEnded, setCompleted, stage, count, exerciseKey, repsTarget, currentSet, totalSets]);
 
   const handleEndSession = () => {
     setRunning(false);
     setSessionEnded(true);
+  };
+
+  const handleStartNextSet = () => {
+    if (currentSet >= totalSets) return;
+    setCount(0);
+    setAngle(0);
+    setStage("-");
+    setFormLabel("Good");
+    setSetCompleted(false);
+    setRunning(true);
+    setPdfUrl(null);
+    setCurrentSet((prev) => Math.min(prev + 1, totalSets));
   };
 
   const handleRedo = () => {
@@ -106,6 +138,8 @@ export default function LiveWorkoutScreen() {
     setFormLabel("Good");
     setElapsed(0);
     setSessionEnded(false);
+    setSetCompleted(false);
+    setCurrentSet(1);
     setRunning(true);
     setPdfUrl(null);
   };
@@ -114,43 +148,59 @@ export default function LiveWorkoutScreen() {
     router.back();
   };
 
+  // total reps across all sets
+  const completedSetsBeforeCurrent = sessionEnded ? totalSets : currentSet - 1;
+  const totalReps = completedSetsBeforeCurrent * repsTarget + count;
+
   const handleGeneratePdf = async () => {
     try {
-      const duration = elapsed;
-      const avgSpeed = duration > 0 ? count / duration : 0;
-      const formScore = formLabel === "Good" ? 0.9 : 0.7; // temporary score
-      const exerciseName = name || exerciseKey;
+        const duration = elapsed;
+        const avgSpeed = duration > 0 ? totalReps / duration : 0;
+        const formScore = formLabel === "Good" ? 0.9 : 0.7; // temporary score
+        const exerciseName = name || exerciseKey;
 
-      const res = await fetch(`${API_BASE}/generate_report`, {
+        const payload = {
+        patient_name: patientName || "Somay Singh",
+        patient_id: patientId || "P-2025-001",
+        exercise: exerciseName,
+        exercise_key: exerciseKey,
+        reps: totalReps,
+        sets: totalSets,
+        duration,
+        avg_speed: avgSpeed,
+        form_score: formScore,
+        };
+
+        console.log("📤 Sending report payload:", payload);
+
+        const res = await fetch(`${API_BASE}/generate_report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patient_name: "Somay Singh", // later dynamic
-          patient_id: "P-2025-001",
-          age: 42, // or dynamic
-          exercise: exerciseName,
-          exercise_key: exerciseKey,
-          reps: count,
-          duration: duration,
-          avg_speed: avgSpeed,
-          form_score: formScore,
-        }),
-      });
+        body: JSON.stringify(payload),
+        });
 
-      if (!res.ok) {
-        console.log("Response error:", res.status);
-        Alert.alert("Error", "Failed to generate PDF report.");
+        console.log("📥 Report response status:", res.status);
+
+        if (!res.ok) {
+        const errText = await res.text();
+        console.log("❌ Report error body:", errText);
+        Alert.alert(
+            "Error",
+            `Failed to generate PDF report (status ${res.status}). Check backend logs.`
+        );
         return;
-      }
+        }
 
-      const data = await res.json(); // { url: "/reports/xyz.pdf" }
-      const fullUrl = `${API_BASE}${data.url}`;
-      setPdfUrl(fullUrl);
+        const data = await res.json(); // { url: "/reports/xyz.pdf" }
+        console.log("✅ Report response JSON:", data);
 
-      Alert.alert("Report Ready", "Tap 'Open PDF' to view or download.");
+        const fullUrl = `${API_BASE}${data.url}`;
+        setPdfUrl(fullUrl);
+
+        Alert.alert("Report Ready", "Tap 'Open PDF' to view or download.");
     } catch (e) {
-      console.log("PDF generation error:", e);
-      Alert.alert("Error", "Something went wrong while generating the report.");
+        console.log("💥 PDF generation error:", e);
+        Alert.alert("Error", "Something went wrong while generating the report.");
     }
   };
 
@@ -162,7 +212,7 @@ export default function LiveWorkoutScreen() {
     }
   };
 
-  if (hasPermission === null && Platform.OS !== "web") {
+  if (Platform.OS !== "web" && hasPermission === null) {
     return (
       <SafeAreaView style={styles.center}>
         <Text>Requesting camera permission…</Text>
@@ -170,7 +220,7 @@ export default function LiveWorkoutScreen() {
     );
   }
 
-  if (hasPermission === false && Platform.OS !== "web") {
+  if (Platform.OS !== "web" && hasPermission === false) {
     return (
       <SafeAreaView style={styles.center}>
         <Text style={{ textAlign: "center", paddingHorizontal: 16 }}>
@@ -196,6 +246,12 @@ export default function LiveWorkoutScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{name}</Text>
           <Text style={styles.headerSub}>Live posture tracking</Text>
+          {patientName ? (
+            <Text style={styles.headerPatient}>
+              Patient: {patientName}
+              {patientId ? ` • ID: ${patientId}` : ""}
+            </Text>
+          ) : null}
         </View>
         <View style={styles.chip}>
           <Ionicons
@@ -258,7 +314,9 @@ export default function LiveWorkoutScreen() {
           </View>
 
           <View style={styles.counterBox}>
-            <Text style={styles.counterLabel}>Reps</Text>
+            <Text style={styles.counterLabel}>
+              Reps (Set {currentSet}/{totalSets})
+            </Text>
             <Text style={styles.counterMain}>
               {count} / {repsTarget}
             </Text>
@@ -271,12 +329,12 @@ export default function LiveWorkoutScreen() {
                 ]}
               />
             </View>
-            <Text style={styles.progressText}>{progressPercent}% complete</Text>
+            <Text style={styles.progressText}>{progressPercent}% of this set</Text>
           </View>
         </View>
       </View>
 
-      {/* Bottom panel: summary + PDF after completion */}
+      {/* Bottom panel: summary + sets + PDF after completion */}
       <View style={styles.bottomPanel}>
         <View style={styles.statsRow}>
           <View style={styles.stat}>
@@ -288,7 +346,9 @@ export default function LiveWorkoutScreen() {
           </View>
           <View style={styles.stat}>
             <Text style={styles.statLabel}>Sets</Text>
-            <Text style={styles.statValue}>{sets}</Text>
+            <Text style={styles.statValue}>
+              {currentSet} / {totalSets}
+            </Text>
           </View>
           <View style={styles.stat}>
             <Text style={styles.statLabel}>Exercise</Text>
@@ -296,7 +356,12 @@ export default function LiveWorkoutScreen() {
           </View>
         </View>
 
-        {!sessionEnded ? (
+        {/* States:
+            - running & not setCompleted & not sessionEnded  -> End Session
+            - setCompleted & !sessionEnded                   -> Start Next Set
+            - sessionEnded                                   -> Session completed + PDF
+        */}
+        {!sessionEnded && !setCompleted && (
           <TouchableOpacity
             style={[styles.mainBtn, styles.stopBtn]}
             onPress={handleEndSession}
@@ -309,11 +374,48 @@ export default function LiveWorkoutScreen() {
             />
             <Text style={styles.mainBtnText}>End Session</Text>
           </TouchableOpacity>
-        ) : (
+        )}
+
+        {setCompleted && !sessionEnded && (
+          <View style={styles.endActions}>
+            <Text style={styles.endTitle}>
+              Set {currentSet} completed
+            </Text>
+            <Text style={styles.endSub}>
+              Reps this set: {count} • Total reps: {totalReps}
+            </Text>
+
+            <View style={styles.endButtonsRow}>
+              <TouchableOpacity
+                style={[styles.mainBtn, styles.secondaryBtn]}
+                onPress={handleEndSession}
+              >
+                <Text
+                  style={[styles.mainBtnText, { color: ColorTheme.fourth }]}
+                >
+                  End Workout
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.mainBtn, styles.primaryBtn]}
+                onPress={handleStartNextSet}
+              >
+                <Text
+                  style={[styles.mainBtnText, { color: ColorTheme.first }]}
+                >
+                  Start Next Set
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {sessionEnded && (
           <View style={styles.endActions}>
             <Text style={styles.endTitle}>Session completed</Text>
             <Text style={styles.endSub}>
-              Reps: {count} • Duration: {elapsed.toFixed(1)} sec
+              Total reps: {totalReps} • Duration: {elapsed.toFixed(1)} sec
             </Text>
 
             <View style={styles.endButtonsRow}>
@@ -321,8 +423,10 @@ export default function LiveWorkoutScreen() {
                 style={[styles.mainBtn, styles.secondaryBtn]}
                 onPress={handleRedo}
               >
-                <Text style={[styles.mainBtnText, { color: ColorTheme.fourth }]}>
-                  Repeat Set
+                <Text
+                  style={[styles.mainBtnText, { color: ColorTheme.fourth }]}
+                >
+                  Repeat Workout
                 </Text>
               </TouchableOpacity>
 
@@ -330,7 +434,9 @@ export default function LiveWorkoutScreen() {
                 style={[styles.mainBtn, styles.primaryBtn]}
                 onPress={handleGeneratePdf}
               >
-                <Text style={[styles.mainBtnText, { color: ColorTheme.first }]}>
+                <Text
+                  style={[styles.mainBtnText, { color: ColorTheme.first }]}
+                >
                   Generate PDF
                 </Text>
               </TouchableOpacity>
@@ -347,7 +453,9 @@ export default function LiveWorkoutScreen() {
                   color={ColorTheme.first}
                   style={{ marginRight: 6 }}
                 />
-                <Text style={[styles.mainBtnText, { color: ColorTheme.first }]}>
+                <Text
+                  style={[styles.mainBtnText, { color: ColorTheme.first }]}
+                >
                   Open PDF
                 </Text>
               </TouchableOpacity>
@@ -373,6 +481,7 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 6, marginRight: 6 },
   headerTitle: { fontSize: 18, fontWeight: "700", color: ColorTheme.fourth },
   headerSub: { fontSize: 12, color: ColorTheme.fourth, opacity: 0.7 },
+  headerPatient: { fontSize: 11, color: "#9ca3af", marginTop: 2 },
   chip: {
     flexDirection: "row",
     alignItems: "center",
@@ -482,9 +591,11 @@ const styles = StyleSheet.create({
   },
   mainBtnText: { fontSize: 14, fontWeight: "700" },
   stopBtn: { marginTop: 6, backgroundColor: "#fecaca" },
+
   endActions: { marginTop: 4 },
   endTitle: { fontSize: 16, fontWeight: "700", color: ColorTheme.fourth },
   endSub: { fontSize: 12, color: "#6b7280", marginTop: 2 },
+
   endButtonsRow: {
     flexDirection: "row",
     marginTop: 10,
