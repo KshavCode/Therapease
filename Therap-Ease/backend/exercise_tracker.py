@@ -75,7 +75,6 @@ async def generate_report(request: Request):
     data = await request.json()
     print("Incoming report data:", data)
 
-    # --------- Read fields safely from JSON ---------
     patient_name = data.get("patient_name", "Unknown Patient")
     patient_id = data.get("patient_id", "N/A")
     exercise = data.get("exercise", "Exercise")
@@ -88,11 +87,10 @@ async def generate_report(request: Request):
     assigned_reps = int(data.get("assigned_reps", 0))
 
     form_score = float(data.get("form_score", 0.0) or 0.0)
-    # If score is 0–1, convert to 0–100
+
     if form_score <= 1.0:
         form_score = form_score * 100.0
 
-    # Optional extras (can be sent later from frontend if you want)
     medical_history = data.get(
         "medical_history",
         "History of hip replacement surgery. Currently undergoing physiotherapy "
@@ -107,7 +105,6 @@ async def generate_report(request: Request):
 
     date_str = datetime.now().strftime("%d %B %Y")
 
-    # --------- Helper: ASCII bar visualization ---------
     def make_bar(value: float, target: float, length: int = 18) -> str:
         if target <= 0:
             ratio = 0.0
@@ -116,7 +113,6 @@ async def generate_report(request: Request):
         filled = int(ratio * length)
         return "[" + "#" * filled + "-" * (length - filled) + "]"
 
-    # Targets to mimic your sample visuals
     reps_target = max(reps, 10) if reps > 0 else 10    # baseline 10
     duration_target = 30.0                             # recommended 30 sec
     speed_target = 10.0                                # arbitrary max index
@@ -127,7 +123,6 @@ async def generate_report(request: Request):
     speed_bar = make_bar(avg_time, speed_target)
     form_bar = make_bar(form_score, form_target)
 
-    # --------- Simple interpretations like sample ---------
     if reps < 5:
         reps_interp = "Low volume session"
     elif reps < 15:
@@ -156,14 +151,12 @@ async def generate_report(request: Request):
     else:
         form_interp = "Technique needs improvement"
 
-    # --------- Build PDF (ASCII only) ---------
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
 
     # ========== PAGE 1 ==========
     pdf.add_page()
 
-    # Title (use '-' not en dash inside the string)
     pdf.set_font("Helvetica", "B", 16)
     pdf.cell(0, 10, "Physiotherapy Exercise Session Report - TherapEase", ln=1, align="C")
 
@@ -174,7 +167,6 @@ async def generate_report(request: Request):
     pdf.set_font("Helvetica", "", 11)
     pdf.cell(0, 6, f"Name: {patient_name}", ln=1)
     pdf.cell(0, 6, f"Patient ID: {patient_id}", ln=1)
-    # Age is optional, not required; add later if you have it
     pdf.cell(0, 6, f"Date of Report: {date_str}", ln=1)
 
     pdf.ln(4)
@@ -207,7 +199,6 @@ async def generate_report(request: Request):
     # ========== PAGE 2 ==========
     pdf.add_page()
 
-    # Session Summary table
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 8, "Session Summary", ln=1)
 
@@ -218,7 +209,6 @@ async def generate_report(request: Request):
 
     pdf.set_font("Helvetica", "", 10)
 
-    # Exercise row
     pdf.cell(60, 7, "Exercise", border=1)
     pdf.cell(60, 7, exercise, border=1)
     pdf.cell(70, 7, "Primary movement", border=1, ln=1)
@@ -282,7 +272,6 @@ async def generate_report(request: Request):
     )
     pdf.multi_cell(0, 5, remarks)
 
-    # --------- Save PDF & return URL ---------
     filename = f"report_{patient_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     filepath = os.path.join(REPORT_DIR, filename)
     pdf.output(filepath)

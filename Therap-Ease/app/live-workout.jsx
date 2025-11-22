@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ColorTheme } from "../constants/GlobalStyles";
 
-const API_BASE = "http://192.168.1.9:8000"; // <-- your FastAPI IP/port
+const API_BASE = "http://192.168.1.9:8000";
 
 export default function LiveWorkoutScreen() {
   const router = useRouter();
@@ -37,20 +37,19 @@ export default function LiveWorkoutScreen() {
 
   const [angle, setAngle] = useState(0);
   const [stage, setStage] = useState("-");
-  const [count, setCount] = useState(0);                // reps in current set
+  const [count, setCount] = useState(0); // reps in current set
   const [totalRepsDone, setTotalRepsDone] = useState(0); // reps across all sets
   const [formLabel, setFormLabel] = useState("Good");
-  const [elapsed, setElapsed] = useState(0);            // total session time (sec)
+  const [elapsed, setElapsed] = useState(0); // total session time (sec)
   const [running, setRunning] = useState(true);
   const [sessionEnded, setSessionEnded] = useState(false); // all sets done OR ended manually
   const [setCompleted, setSetCompleted] = useState(false); // current set done
-  const [currentSet, setCurrentSet] = useState(1);      // 1..totalSets
+  const [currentSet, setCurrentSet] = useState(1); // totalSets
   const [pdfUrl, setPdfUrl] = useState(null);
 
-  // ask camera permission
   useEffect(() => {
     if (Platform.OS === "web") {
-      // skip permission on web (we show placeholder)
+      
       setHasPermission(true);
       return;
     }
@@ -67,7 +66,7 @@ export default function LiveWorkoutScreen() {
     return () => clearInterval(id);
   }, [running]);
 
-  // dummy tracking to simulate reps; replace later with TFJS/Mediapipe
+  // dummy tracking to simulate reps;
   useEffect(() => {
     if (!running || sessionEnded || setCompleted) return;
 
@@ -78,7 +77,6 @@ export default function LiveWorkoutScreen() {
         setStage((prevStage) => {
           let newStage = prevStage;
 
-          // decide rep event based on angle + stage
           let repHappened = false;
 
           if (exerciseKey === "bicep_curl" || exerciseKey === "shoulder_abduction") {
@@ -96,10 +94,9 @@ export default function LiveWorkoutScreen() {
           }
 
           if (repHappened) {
-            // increment reps for this set
+            
             setCount((prevCount) => {
               const newCount = prevCount + 1;
-              // also update total reps done
               setTotalRepsDone((prevTotal) => prevTotal + 1);
 
               // if this set finished
@@ -136,7 +133,7 @@ export default function LiveWorkoutScreen() {
 
   const handleStartNextSet = () => {
     if (currentSet >= totalSets) return;
-    // move to next set, keep totalRepsDone
+
     setCurrentSet((prev) => Math.min(prev + 1, totalSets));
     setCount(0);
     setAngle(0);
@@ -170,8 +167,8 @@ export default function LiveWorkoutScreen() {
       const duration = elapsed; // seconds
       const totalReps = totalRepsDone;
       const assignedTotalReps = repsTarget * totalSets;
-      const avgTime = totalReps > 0 ? duration / totalReps : 0; // sec per rep
-      const formScore = formLabel === "Good" ? 0.9 : 0.7; // placeholder score
+      const avgTime = totalReps > 0 ? duration / totalReps : 0; 
+      const formScore = formLabel === "Good" ? 0.9 : 0.7; 
       const exerciseName = name || exerciseKey;
 
       const payload = {
@@ -180,8 +177,8 @@ export default function LiveWorkoutScreen() {
         exercise: exerciseName,
         exercise_key: exerciseKey,
 
-        reps: totalReps,               // actual reps
-        assigned_reps: assignedTotalReps, // target reps across all sets
+        reps: totalReps, 
+        assigned_reps: assignedTotalReps, 
 
         sets: totalSets,
         duration,
@@ -203,7 +200,7 @@ export default function LiveWorkoutScreen() {
         return;
       }
 
-      const data = await res.json(); // { url: "/reports/xyz.pdf" }
+      const data = await res.json();
       const fullUrl = `${API_BASE}${data.url}`;
       setPdfUrl(fullUrl);
 

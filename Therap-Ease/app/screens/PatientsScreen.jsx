@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
-// Each patient can have MULTIPLE exercises now
 const SAMPLE = [
   {
     id: "p1",
@@ -174,7 +173,6 @@ export default function PatientsScreen() {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  // 👉 Open Exercise screen for a specific exercise of a patient
   const handleOpenExercise = (patient, exercise) => {
     const exerciseName = exercise.name || "Exercise";
     const exerciseKey = exercise.key || "squat";
@@ -185,10 +183,10 @@ export default function PatientsScreen() {
       pathname: "/exercise",
       params: {
         exerciseKey,
-        name: exerciseName, // 👈 flows to ExerciseScreen & LiveWorkout
+        name: exerciseName,
         reps: String(reps),
         sets: String(sets),
-        doctor: "Dr. Sharma", // make dynamic later if needed
+        doctor: "Dr. Sharma", // we will make it dynamic later
         endDate: exercise.endDate || "2025-12-31",
         notes: exercise.notes || patient.notes || "Perform slowly with proper form.",
         patientName: patient.name,
@@ -202,7 +200,7 @@ export default function PatientsScreen() {
     setTimeout(() => {
       setRefreshing(false);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setPatients((prev) => [...prev]); // noop refresh
+      setPatients((prev) => [...prev]);
     }, 800);
   };
 
@@ -251,7 +249,7 @@ export default function PatientsScreen() {
               Notes: {item.notes || "No notes"}
             </Text>
 
-            {/* 👉 List all exercises for this patient */}
+            {/* List all exercises for this patient */}
             {exercises.length > 0 ? (
               <View style={{ marginTop: 8 }}>
                 {exercises.map((ex) => (
@@ -283,7 +281,6 @@ export default function PatientsScreen() {
               </Text>
             )}
 
-            {/* Optional remove row below exercises */}
             <View style={stylesLocal.actions}>
               <TouchableOpacity style={[stylesLocal.btn, stylesLocal.removeBtn]}>
                 <Text style={[stylesLocal.btnText, { color: "#fff" }]}>
