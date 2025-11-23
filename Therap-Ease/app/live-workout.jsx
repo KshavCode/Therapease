@@ -138,10 +138,8 @@ function findKp(keypoints, name) {
   });
 }
 
-const PoseCamera = React.forwardRef(({ onPoseDetected, ...props }, ref) => {
-  // Your custom CameraView wrapper should call onPoseDetected(pose) internally
-  return <CameraView ref={ref} {...props} />;
-});
+// Helper to mirror X for front camera (selfie view)
+const mapX = (x, isFront = true) => (isFront ? 1 - x : x);
 
 export default function LiveWorkoutScreen() {
   const router = useRouter();
@@ -150,14 +148,16 @@ export default function LiveWorkoutScreen() {
   const exerciseKey = params.exerciseKey || "squat";
   const name = params.name || "Squats";
   const repsTarget = Number(params.reps || 10);
-  const setsParam = params.sets || "3";
-  const totalSets = Number(setsParam || 1);
+  const totalSets = Number(params.sets || 1);
   const doctor = params.doctor || "Dr. Sharma";
   const patientName = params.patientName || "";
   const patientId = params.patientId || "";
 
   const [hasPermission, setHasPermission] = useState(null);
   const cameraRef = useRef(null);
+
+  // NEW: camera facing state
+  const [facing, setFacing] = useState("front"); // "front" | "back"
 
   const [angle, setAngle] = useState(0);
   const [stage, setStage] = useState("-");
@@ -172,6 +172,8 @@ export default function LiveWorkoutScreen() {
   const [pdfUrl, setPdfUrl] = useState(null);
 
   const [poseKeypoints, setPoseKeypoints] = useState([]);
+  const frameTimerRef = useRef(null);
+  const isCapturingRef = useRef(false);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -190,10 +192,73 @@ export default function LiveWorkoutScreen() {
     return () => clearInterval(id);
   }, [running, sessionEnded]);
 
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    if (!hasPermission) return;
+    if (!running || sessionEnded || setCompleted) {
+      if (frameTimerRef.current) {
+        clearInterval(frameTimerRef.current);
+        frameTimerRef.current = null;
+      }
+      return;
+    }
+
+    frameTimerRef.current = setInterval(() => {
+      captureAndAnalyzeFrame();
+    }, 800);
+
+    return () => {
+      if (frameTimerRef.current) {
+        clearInterval(frameTimerRef.current);
+        frameTimerRef.current = null;
+      }
+    };
+  }, [hasPermission, running, sessionEnded, setCompleted]);
+
+  const captureAndAnalyzeFrame = async () => {
+    if (!cameraRef.current) return;
+    if (isCapturingRef.current) return;
+    isCapturingRef.current = true;
+
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        base64: true,
+        quality: 0.3,
+        skipProcessing: true,
+      });
+
+      if (!photo || !photo.base64) {
+        isCapturingRef.current = false;
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/analyze_frame`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_base64: photo.base64,
+          exercise_key: exerciseKey,
+        }),
+      });
+
+      if (!res.ok) {
+        isCapturingRef.current = false;
+        return;
+      }
+
+      const data = await res.json();
+      const pose = data.pose || { keypoints: [] };
+      setPoseKeypoints(pose.keypoints || []);
+      updateFromPose(pose);
+    } catch (e) {
+      console.log("capture/analyze error:", e);
+    } finally {
+      isCapturingRef.current = false;
+    }
+  };
+
   const updateFromPose = (pose) => {
     if (!running || sessionEnded || setCompleted || !pose) return;
-
-    setPoseKeypoints(pose.keypoints || []);
 
     let angles = [];
 
@@ -258,8 +323,8 @@ export default function LiveWorkoutScreen() {
     setAngle(avgAngle);
 
     if (exerciseKey === "bicep_curl") {
-      if (avgAngle < 60) setFormLabel("Great contraction!");
-      else if (avgAngle > 160) setFormLabel("Full extension!");
+      if (avgAngle < 70) setFormLabel("Great contraction!");
+      else if (avgAngle > 145) setFormLabel("Full extension!");
       else setFormLabel("Complete your motion fully.");
     } else if (exerciseKey === "squat") {
       if (avgAngle < 95) setFormLabel("Nice deep squat!");
@@ -289,8 +354,8 @@ export default function LiveWorkoutScreen() {
       );
     }
 
-    const downThresh = 90;
-    const upThresh = 160;
+    const downThresh = 98;
+    const upThresh = 150;
 
     setStage((prevStage) => {
       let newStage = prevStage;
@@ -342,10 +407,6 @@ export default function LiveWorkoutScreen() {
     });
   };
 
-  const handlePoseDetected = (pose) => {
-    updateFromPose(pose);
-  };
-
   const handleEndSession = () => {
     setRunning(false);
     setSessionEnded(true);
@@ -381,6 +442,11 @@ export default function LiveWorkoutScreen() {
 
   const handleBack = () => {
     router.back();
+  };
+
+  // NEW: toggle camera front/back
+  const handleToggleCamera = () => {
+    setFacing((prev) => (prev === "front" ? "back" : "front"));
   };
 
   const handleGeneratePdf = async () => {
@@ -420,7 +486,7 @@ export default function LiveWorkoutScreen() {
       const fullUrl = `${API_BASE}${data.url}`;
       setPdfUrl(fullUrl);
       Alert.alert("Report Ready", "Tap 'Open PDF' to view or download.");
-    } catch (e) {
+    } catch (_e) {
       Alert.alert("Error", "Something went wrong while generating the report.");
     }
   };
@@ -459,6 +525,9 @@ export default function LiveWorkoutScreen() {
 
   const trackedJoints = EXERCISE_JOINTS[exerciseKey] || [];
   const segments = EXERCISE_SEGMENTS[exerciseKey] || [];
+  const minScore = 0.4;
+
+  const isFrontCamera = Platform.OS !== "web" && facing === "front";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -505,12 +574,25 @@ export default function LiveWorkoutScreen() {
             </Text>
           </View>
         ) : (
-          <PoseCamera
+          <CameraView
             style={styles.camera}
-            facing="front"
             ref={cameraRef}
-            onPoseDetected={handlePoseDetected}
+            facing={facing}
           />
+        )}
+
+        {/* Camera toggle button */}
+        {Platform.OS !== "web" && (
+          <TouchableOpacity
+            style={styles.cameraSwitchBtn}
+            onPress={handleToggleCamera}
+          >
+            <Ionicons
+              name="camera-reverse-outline"
+              size={20}
+              color={ColorTheme.first}
+            />
+          </TouchableOpacity>
         )}
 
         <Svg
@@ -521,29 +603,35 @@ export default function LiveWorkoutScreen() {
           {segments.map(([a, b], idx) => {
             const kpA = findKp(poseKeypoints, a);
             const kpB = findKp(poseKeypoints, b);
-            if (!kpA || !kpB) return null;
+            if (
+              !kpA ||
+              !kpB ||
+              (kpA.score ?? 0) < minScore ||
+              (kpB.score ?? 0) < minScore
+            )
+              return null;
             return (
               <Line
                 key={`seg-${idx}`}
-                x1={kpA.x}
+                x1={mapX(kpA.x, isFrontCamera)}
                 y1={kpA.y}
-                x2={kpB.x}
+                x2={mapX(kpB.x, isFrontCamera)}
                 y2={kpB.y}
-                stroke="lime"
-                strokeWidth={0.01}
+                stroke="#4ade80"
+                strokeWidth={0.012}
               />
             );
           })}
           {trackedJoints.map((j, idx) => {
             const kp = findKp(poseKeypoints, j);
-            if (!kp) return null;
+            if (!kp || (kp.score ?? 0) < minScore) return null;
             return (
               <Circle
                 key={`pt-${idx}`}
-                cx={kp.x}
+                cx={mapX(kp.x, isFrontCamera)}
                 cy={kp.y}
                 r={0.015}
-                fill="cyan"
+                fill="#22d3ee"
               />
             );
           })}
@@ -566,9 +654,13 @@ export default function LiveWorkoutScreen() {
               ]}
             >
               <Ionicons
-                name={formLabel === "Good" ? "checkmark-circle" : "warning"}
+                name={
+                  formLabel === "Good"
+                    ? "checkmark-circle-outline"
+                    : "information-circle-outline"
+                }
                 size={14}
-                color={ColorTheme.first}
+                color={ColorTheme.fourth}
                 style={{ marginRight: 4 }}
               />
               <Text style={styles.formText}>{formLabel}</Text>
@@ -769,6 +861,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   camera: { flex: 1 },
+  // NEW: camera switch button
+  cameraSwitchBtn: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(15,23,42,0.8)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   cameraOverlay: {
     position: "absolute",
     left: 0,
@@ -796,9 +901,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  formGood: { backgroundColor: "rgba(34,197,94,0.9)" },
-  formCheck: { backgroundColor: "rgba(239,68,68,0.9)" },
-  formText: { fontSize: 11, fontWeight: "600", color: ColorTheme.first },
+  formGood: { backgroundColor: "rgba(34,197,94,0.26)" },
+  formCheck: { backgroundColor: "rgba(59,130,246,0.28)" },
+  formText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: " rgba(255, 252, 252, 1)",
+  },
   counterBox: {
     marginTop: 4,
     padding: 8,

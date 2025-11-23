@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, UploadFile, File, Form
+from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,9 +7,11 @@ from datetime import datetime
 import os
 import time
 
+import base64
 import cv2
 import numpy as np
 import mediapipe as mp
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -30,6 +32,13 @@ app.mount("/reports", StaticFiles(directory=REPORT_DIR), name="reports")
 app.mount("/videos", StaticFiles(directory=VIDEO_DIR), name="videos")
 
 mp_pose = mp.solutions.pose
+pose_detector = mp_pose.Pose(
+    static_image_mode=False,           # better for continuous frames
+    model_complexity=1,
+    enable_segmentation=False,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5,
+)
 
 EXERCISES = {
     "bicep_curl": [
@@ -153,11 +162,13 @@ def draw_skeleton(image, landmarks, involved_names, color=(0, 255, 0)):
                 ax, ay = int(a_point.x * w), int(a_point.y * h)
                 bx, by = int(b_point.x * w), int(b_point.y * h)
                 cv2.line(image, (ax, ay), (bx, by), color, 3)
+
     for idx in involved_indices:
         p = landmarks[idx]
         if p.visibility > 0.5:
             cx, cy = int(p.x * w), int(p.y * h)
             cv2.circle(image, (cx, cy), 6, (255, 255, 0), -1)
+
     return image
 
 
@@ -202,14 +213,14 @@ async def generate_report(request: Request):
         filled = int(ratio * length)
         return "[" + "#" * filled + "-" * (length - filled) + "]"
 
-    reps_target = max(reps, 10) if reps > 0 else 10
-    duration_target = 30.0
+    reps_target = assigned_reps
+    duration_target = 300.0
     speed_target = 10.0
     form_target = 100.0
 
     reps_bar = make_bar(reps, assigned_reps or reps_target)
     dur_bar = make_bar(duration, duration_target)
-    speed_bar = make_bar(avg_time, speed_target)
+    speed_bar = make_bar(avg_time, duration)
     form_bar = make_bar(form_score, form_target)
 
     if reps < 5:
@@ -326,17 +337,17 @@ async def generate_report(request: Request):
     pdf.set_font("Helvetica", "", 11)
     pdf.cell(0, 6, f"Repetitions ({reps})", ln=1)
     pdf.set_font("Courier", "", 10)
-    pdf.cell(0, 5, f"{reps_bar}  {reps} / {reps_target} reps", ln=1)
+    pdf.cell(0, 5, f"{reps_bar}  {reps} / {assigned_reps} reps", ln=1)
 
     pdf.set_font("Helvetica", "", 11)
     pdf.cell(0, 6, f"Session Duration ({duration:.1f} sec)", ln=1)
     pdf.set_font("Courier", "", 10)
-    pdf.cell(0, 5, f"{dur_bar}  {duration:.1f} / {duration_target:.0f} sec", ln=1)
+    pdf.cell(0, 5, f"{dur_bar}  {duration:.1f} / {duration_target:.0f} sec (Recommended)", ln=1)
 
     pdf.set_font("Helvetica", "", 11)
-    pdf.cell(0, 6, f"Average Speed ({avg_time:.2f})", ln=1)
+    pdf.cell(0, 6, f"Time per rep ({avg_time:.2f})", ln=1)
     pdf.set_font("Courier", "", 10)
-    pdf.cell(0, 5, f"{speed_bar}  speed index", ln=1)
+    pdf.cell(0, 5, f"{speed_bar} {avg_time:.2f} / {duration:.1f} sec", ln=1)
 
     pdf.set_font("Helvetica", "", 11)
     pdf.cell(0, 6, f"Form Score ({form_score:.1f} / 100)", ln=1)
@@ -412,7 +423,7 @@ async def analyze_video(
 
     with mp_pose.Pose(
         min_detection_confidence=0.6,
-        min_tracking_confidence=0.6
+        min_tracking_confidence=0.6,
     ) as pose:
         while True:
             ret, frame = cap.read()
@@ -462,20 +473,20 @@ async def analyze_video(
                     angles.append(calculate_angle(hip, knee, ankle))
             elif exercise_key == "side_bend":
                 left_shoulder = [
-                    lm[mp_pose.PoseLandmark.LEFT_SHOULDER].x,
-                    lm[mp_pose.PoseLandmark.LEFT_SHOULDER].y,
+                    lm[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
+                    lm[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y,
                 ]
                 right_shoulder = [
-                    lm[mp_pose.PoseLandmark.RIGHT_SHOULDER].x,
-                    lm[mp_pose.PoseLandmark.RIGHT_SHOULDER].y,
+                    lm[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
+                    lm[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
                 ]
                 left_hip = [
-                    lm[mp_pose.PoseLandmark.LEFT_HIP].x,
-                    lm[mp_pose.PoseLandmark.LEFT_HIP].y,
+                    lm[mp_pose.PoseLandmark.LEFT_HIP.value].x,
+                    lm[mp_pose.PoseLandmark.LEFT_HIP.value].y,
                 ]
                 right_hip = [
-                    lm[mp_pose.PoseLandmark.RIGHT_HIP].x,
-                    lm[mp_pose.PoseLandmark.RIGHT_HIP].y,
+                    lm[mp_pose.PoseLandmark.RIGHT_HIP.value].x,
+                    lm[mp_pose.PoseLandmark.RIGHT_HIP.value].y,
                 ]
                 angles.append(calculate_angle(left_shoulder, left_hip, right_hip))
                 angles.append(calculate_angle(right_shoulder, right_hip, left_hip))
@@ -547,3 +558,56 @@ async def analyze_video(
             "feedback_summary": feedback_summary,
         }
     )
+
+
+class FrameRequest(BaseModel):
+    image_base64: str
+    exercise_key: str | None = None
+
+@app.post("/analyze_frame")
+async def analyze_frame(req: FrameRequest):
+    try:
+        print("analyze_frame called, exercise_key =", req.exercise_key)
+
+        img_data = base64.b64decode(req.image_base64)
+        nparr = np.frombuffer(img_data, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if frame is None:
+            print("Failed to decode frame in analyze_frame")
+            raise HTTPException(status_code=400, detail="Invalid image data")
+
+        # 🔹 downscale large frames to speed up pose
+        h, w = frame.shape[:2]
+        max_side = 480
+        scale = max_side / max(h, w)
+        if scale < 1.0:
+            frame = cv2.resize(
+                frame,
+                (int(w * scale), int(h * scale)),
+                interpolation=cv2.INTER_AREA,
+            )
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = pose_detector.process(rgb)
+
+        if not results.pose_landmarks:
+            print("No pose detected in analyze_frame")
+            return {"pose": {"keypoints": []}}
+
+        keypoints = []
+        for idx, lm in enumerate(results.pose_landmarks.landmark):
+            name = mp_pose.PoseLandmark(idx).name.lower()
+            keypoints.append(
+                {
+                    "name": name,
+                    "x": float(lm.x),          # still normalized 0–1
+                    "y": float(lm.y),
+                    "score": float(lm.visibility),
+                }
+            )
+
+        print("Returning", len(keypoints), "keypoints from analyze_frame")
+        return {"pose": {"keypoints": keypoints}}
+    except Exception as e:
+        print("analyze_frame error:", e)
+        raise HTTPException(status_code=500, detail="Failed to process frame")
