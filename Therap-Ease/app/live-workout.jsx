@@ -9,12 +9,140 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Camera , CameraView} from "expo-camera";
+import { Camera, CameraView } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as DocumentPicker from "expo-document-picker";
+import Svg, { Circle, Line } from "react-native-svg";
+import { Video } from "expo-av";
 import { ColorTheme } from "../constants/GlobalStyles";
 
 const API_BASE = "http://192.168.1.9:8000";
+
+const EXERCISE_JOINTS = {
+  squat: [
+    "left_hip",
+    "left_knee",
+    "left_ankle",
+    "right_hip",
+    "right_knee",
+    "right_ankle",
+  ],
+  bicep_curl: [
+    "left_shoulder",
+    "left_elbow",
+    "left_wrist",
+    "right_shoulder",
+    "right_elbow",
+    "right_wrist",
+  ],
+  shoulder_abduction: [
+    "left_shoulder",
+    "left_elbow",
+    "left_wrist",
+    "right_shoulder",
+    "right_elbow",
+    "right_wrist",
+  ],
+  knee_extension: [
+    "left_hip",
+    "left_knee",
+    "left_ankle",
+    "right_hip",
+    "right_knee",
+    "right_ankle",
+  ],
+  leg_raise: [
+    "left_hip",
+    "left_knee",
+    "left_ankle",
+    "right_hip",
+    "right_knee",
+    "right_ankle",
+  ],
+  side_bend: ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
+};
+
+const EXERCISE_SEGMENTS = {
+  squat: [
+    ["left_hip", "left_knee"],
+    ["left_knee", "left_ankle"],
+    ["right_hip", "right_knee"],
+    ["right_knee", "right_ankle"],
+  ],
+  bicep_curl: [
+    ["left_shoulder", "left_elbow"],
+    ["left_elbow", "left_wrist"],
+    ["right_shoulder", "right_elbow"],
+    ["right_elbow", "right_wrist"],
+  ],
+  shoulder_abduction: [
+    ["left_shoulder", "left_elbow"],
+    ["left_elbow", "left_wrist"],
+    ["right_shoulder", "right_elbow"],
+    ["right_elbow", "right_wrist"],
+  ],
+  knee_extension: [
+    ["left_hip", "left_knee"],
+    ["left_knee", "left_ankle"],
+    ["right_hip", "right_knee"],
+    ["right_knee", "right_ankle"],
+  ],
+  leg_raise: [
+    ["left_hip", "left_knee"],
+    ["left_knee", "left_ankle"],
+    ["right_hip", "right_knee"],
+    ["right_knee", "right_ankle"],
+  ],
+  side_bend: [
+    ["left_shoulder", "left_hip"],
+    ["right_shoulder", "right_hip"],
+  ],
+};
+
+function toVec(point) {
+  return [point.x, point.y];
+}
+
+function calculateAngle(a, b, c) {
+  const A = toVec(a);
+  const B = toVec(b);
+  const C = toVec(c);
+  const radians =
+    Math.atan2(C[1] - B[1], C[0] - B[0]) -
+    Math.atan2(A[1] - B[1], A[0] - B[0]);
+  let angle = Math.abs((radians * 180.0) / Math.PI);
+  if (angle > 180) angle = 360 - angle;
+  return angle;
+}
+
+function getKeypoint(pose, name) {
+  if (!pose || !pose.keypoints) return null;
+  const target = name.toLowerCase();
+  const kp = pose.keypoints.find((k) => {
+    const n = (k.name || k.part || k.bodyPart || "")
+      .toString()
+      .toLowerCase();
+    return n === target;
+  });
+  if (!kp) return null;
+  return { x: kp.x, y: kp.y };
+}
+
+function findKp(keypoints, name) {
+  if (!keypoints) return null;
+  const target = name.toLowerCase();
+  return keypoints.find((k) => {
+    const n = (k.name || k.part || k.bodyPart || "")
+      .toString()
+      .toLowerCase();
+    return n === target;
+  });
+}
+
+const PoseCamera = React.forwardRef(({ onPoseDetected, ...props }, ref) => {
+  return <CameraView ref={ref} {...props} />;
+});
 
 export default function LiveWorkoutScreen() {
   const router = useRouter();
@@ -23,12 +151,9 @@ export default function LiveWorkoutScreen() {
   const exerciseKey = params.exerciseKey || "squat";
   const name = params.name || "Squats";
   const repsTarget = Number(params.reps || 10);
-
   const setsParam = params.sets || "3";
   const totalSets = Number(setsParam || 1);
-
   const doctor = params.doctor || "Dr. Sharma";
-
   const patientName = params.patientName || "";
   const patientId = params.patientId || "";
 
@@ -37,19 +162,25 @@ export default function LiveWorkoutScreen() {
 
   const [angle, setAngle] = useState(0);
   const [stage, setStage] = useState("-");
-  const [count, setCount] = useState(0); // reps in current set
-  const [totalRepsDone, setTotalRepsDone] = useState(0); // reps across all sets
+  const [count, setCount] = useState(0);
+  const [totalRepsDone, setTotalRepsDone] = useState(0);
   const [formLabel, setFormLabel] = useState("Good");
-  const [elapsed, setElapsed] = useState(0); // total session time (sec)
+  const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);
-  const [sessionEnded, setSessionEnded] = useState(false); // all sets done OR ended manually
-  const [setCompleted, setSetCompleted] = useState(false); // current set done
-  const [currentSet, setCurrentSet] = useState(1); // totalSets
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [setCompleted, setSetCompleted] = useState(false);
+  const [currentSet, setCurrentSet] = useState(1);
   const [pdfUrl, setPdfUrl] = useState(null);
+
+  const [mode, setMode] = useState("live");
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [analysisData, setAnalysisData] = useState(null);
+  const [processedVideoUri, setProcessedVideoUri] = useState(null);
+
+  const [poseKeypoints, setPoseKeypoints] = useState([]);
 
   useEffect(() => {
     if (Platform.OS === "web") {
-      
       setHasPermission(true);
       return;
     }
@@ -59,71 +190,168 @@ export default function LiveWorkoutScreen() {
     })();
   }, []);
 
-  // timer
   useEffect(() => {
-    if (!running) return;
+    if (!running || mode !== "live") return;
     const id = setInterval(() => setElapsed((t) => t + 1), 1000);
     return () => clearInterval(id);
-  }, [running]);
+  }, [running, mode]);
 
-  // dummy tracking to simulate reps;
-  useEffect(() => {
-    if (!running || sessionEnded || setCompleted) return;
+  const updateFromPose = (pose) => {
+    if (!running || sessionEnded || setCompleted || !pose || mode !== "live")
+      return;
 
-    const id = setInterval(() => {
-      setAngle((prev) => {
-        const next = prev > 160 ? 40 : prev + 25;
+    setPoseKeypoints(pose.keypoints || []);
 
-        setStage((prevStage) => {
-          let newStage = prevStage;
+    let angles = [];
 
-          let repHappened = false;
+    if (exerciseKey === "squat") {
+      const leftHip = getKeypoint(pose, "left_hip");
+      const leftKnee = getKeypoint(pose, "left_knee");
+      const leftAnkle = getKeypoint(pose, "left_ankle");
+      const rightHip = getKeypoint(pose, "right_hip");
+      const rightKnee = getKeypoint(pose, "right_knee");
+      const rightAnkle = getKeypoint(pose, "right_ankle");
+      if (leftHip && leftKnee && leftAnkle) {
+        angles.push(calculateAngle(leftHip, leftKnee, leftAnkle));
+      }
+      if (rightHip && rightKnee && rightAnkle) {
+        angles.push(calculateAngle(rightHip, rightKnee, rightAnkle));
+      }
+    } else if (
+      exerciseKey === "bicep_curl" ||
+      exerciseKey === "shoulder_abduction"
+    ) {
+      const leftShoulder = getKeypoint(pose, "left_shoulder");
+      const leftElbow = getKeypoint(pose, "left_elbow");
+      const leftWrist = getKeypoint(pose, "left_wrist");
+      const rightShoulder = getKeypoint(pose, "right_shoulder");
+      const rightElbow = getKeypoint(pose, "right_elbow");
+      const rightWrist = getKeypoint(pose, "right_wrist");
+      if (leftShoulder && leftElbow && leftWrist) {
+        angles.push(calculateAngle(leftShoulder, leftElbow, leftWrist));
+      }
+      if (rightShoulder && rightElbow && rightWrist) {
+        angles.push(calculateAngle(rightShoulder, rightElbow, rightWrist));
+      }
+    } else if (exerciseKey === "knee_extension" || exerciseKey === "leg_raise") {
+      const leftHip = getKeypoint(pose, "left_hip");
+      const leftKnee = getKeypoint(pose, "left_knee");
+      const leftAnkle = getKeypoint(pose, "left_ankle");
+      const rightHip = getKeypoint(pose, "right_hip");
+      const rightKnee = getKeypoint(pose, "right_knee");
+      const rightAnkle = getKeypoint(pose, "right_ankle");
+      if (leftHip && leftKnee && leftAnkle) {
+        angles.push(calculateAngle(leftHip, leftKnee, leftAnkle));
+      }
+      if (rightHip && rightKnee && rightAnkle) {
+        angles.push(calculateAngle(rightHip, rightKnee, rightAnkle));
+      }
+    } else if (exerciseKey === "side_bend") {
+      const leftShoulder = getKeypoint(pose, "left_shoulder");
+      const rightShoulder = getKeypoint(pose, "right_shoulder");
+      const leftHip = getKeypoint(pose, "left_hip");
+      const rightHip = getKeypoint(pose, "right_hip");
+      if (leftShoulder && leftHip && rightHip) {
+        angles.push(calculateAngle(leftShoulder, leftHip, rightHip));
+      }
+      if (rightShoulder && rightHip && leftHip) {
+        angles.push(calculateAngle(rightShoulder, rightHip, leftHip));
+      }
+    }
 
-          if (exerciseKey === "bicep_curl" || exerciseKey === "shoulder_abduction") {
-            if (next > 150) newStage = "down";
-            if (next < 50 && prevStage === "down") {
-              newStage = "up";
-              repHappened = true;
-            }
-          } else {
-            if (next > 160) newStage = "up";
-            if (next < 90 && prevStage === "up") {
-              newStage = "down";
-              repHappened = true;
+    if (!angles.length) return;
+
+    const avgAngle = angles.reduce((sum, a) => sum + a, 0) / angles.length;
+    setAngle(avgAngle);
+
+    if (exerciseKey === "bicep_curl") {
+      if (avgAngle < 60) setFormLabel("Great contraction!");
+      else if (avgAngle > 160) setFormLabel("Full extension!");
+      else setFormLabel("Complete your motion fully.");
+    } else if (exerciseKey === "squat") {
+      if (avgAngle < 95) setFormLabel("Nice deep squat!");
+      else if (avgAngle > 160) setFormLabel("Standing tall.");
+      else setFormLabel("Try going a bit lower.");
+    } else if (exerciseKey === "shoulder_abduction") {
+      setFormLabel(
+        avgAngle > 120 ? "Good arm raise!" : "Lift higher for full range."
+      );
+    } else if (exerciseKey === "knee_extension") {
+      setFormLabel(
+        avgAngle > 160 ? "Full knee extension achieved!" : "Straighten knee more."
+      );
+    } else if (exerciseKey === "leg_raise") {
+      setFormLabel(
+        avgAngle > 140 ? "Leg raised high enough!" : "Lift leg higher."
+      );
+    } else if (exerciseKey === "side_bend") {
+      setFormLabel(
+        avgAngle > 15 && avgAngle < 35
+          ? "Nice side bend!"
+          : "Bend slightly more to side."
+      );
+    } else {
+      setFormLabel(
+        avgAngle > 170 || avgAngle < 30 ? "Check Form" : "Good"
+      );
+    }
+
+    const downThresh = 90;
+    const upThresh = 160;
+
+    setStage((prevStage) => {
+      let newStage = prevStage;
+      let repHappened = false;
+
+      if (
+        exerciseKey === "bicep_curl" ||
+        exerciseKey === "shoulder_abduction"
+      ) {
+        if (avgAngle > 150) newStage = "down";
+        if (avgAngle < 50 && prevStage === "down") {
+          newStage = "up";
+          repHappened = true;
+        }
+      } else if (
+        exerciseKey === "squat" ||
+        exerciseKey === "knee_extension" ||
+        exerciseKey === "leg_raise"
+      ) {
+        if (avgAngle > upThresh) newStage = "up";
+        if (avgAngle < downThresh && prevStage === "up") {
+          newStage = "down";
+          repHappened = true;
+        }
+      } else if (exerciseKey === "side_bend") {
+        if (avgAngle > 40) newStage = "up";
+        if (avgAngle < 25 && prevStage === "up") {
+          newStage = "down";
+          repHappened = true;
+        }
+      }
+
+      if (repHappened) {
+        setCount((prevCount) => {
+          const newCount = prevCount + 1;
+          setTotalRepsDone((prevTotal) => prevTotal + 1);
+          if (newCount >= repsTarget) {
+            setSetCompleted(true);
+            setRunning(false);
+            if (currentSet >= totalSets) {
+              setSessionEnded(true);
             }
           }
-
-          if (repHappened) {
-            
-            setCount((prevCount) => {
-              const newCount = prevCount + 1;
-              setTotalRepsDone((prevTotal) => prevTotal + 1);
-
-              // if this set finished
-              if (newCount >= repsTarget) {
-                setSetCompleted(true);
-                setRunning(false);
-
-                // if this was the last set, end the full session
-                if (currentSet >= totalSets) {
-                  setSessionEnded(true);
-                }
-              }
-
-              return newCount;
-            });
-          }
-
-          return newStage;
+          return newCount;
         });
+      }
 
-        setFormLabel(next > 170 || next < 30 ? "Check Form" : "Good");
-        return next;
-      });
-    }, 700);
+      return newStage;
+    });
+  };
 
-    return () => clearInterval(id);
-  }, [running, sessionEnded, setCompleted, exerciseKey, repsTarget, currentSet, totalSets]);
+  const handlePoseDetected = (pose) => {
+    updateFromPose(pose);
+  };
 
   const handleEndSession = () => {
     setRunning(false);
@@ -133,7 +361,6 @@ export default function LiveWorkoutScreen() {
 
   const handleStartNextSet = () => {
     if (currentSet >= totalSets) return;
-
     setCurrentSet((prev) => Math.min(prev + 1, totalSets));
     setCount(0);
     setAngle(0);
@@ -142,6 +369,8 @@ export default function LiveWorkoutScreen() {
     setSetCompleted(false);
     setRunning(true);
     setPdfUrl(null);
+    setAnalysisData(null);
+    setProcessedVideoUri(null);
   };
 
   const handleRedo = () => {
@@ -156,6 +385,9 @@ export default function LiveWorkoutScreen() {
     setCurrentSet(1);
     setRunning(true);
     setPdfUrl(null);
+    setAnalysisData(null);
+    setPoseKeypoints([]);
+    setProcessedVideoUri(null);
   };
 
   const handleBack = () => {
@@ -164,11 +396,12 @@ export default function LiveWorkoutScreen() {
 
   const handleGeneratePdf = async () => {
     try {
-      const duration = elapsed; // seconds
-      const totalReps = totalRepsDone;
+      const duration = analysisData ? analysisData.duration : elapsed;
+      const totalReps = analysisData ? analysisData.reps : totalRepsDone;
       const assignedTotalReps = repsTarget * totalSets;
-      const avgTime = totalReps > 0 ? duration / totalReps : 0; 
-      const formScore = formLabel === "Good" ? 0.9 : 0.7; 
+      const avgTime = totalReps > 0 ? duration / totalReps : 0;
+      const formScore =
+        analysisData?.form_score ?? (formLabel === "Good" ? 0.9 : 0.7);
       const exerciseName = name || exerciseKey;
 
       const payload = {
@@ -176,17 +409,13 @@ export default function LiveWorkoutScreen() {
         patient_id: patientId || "P-2025-001",
         exercise: exerciseName,
         exercise_key: exerciseKey,
-
-        reps: totalReps, 
-        assigned_reps: assignedTotalReps, 
-
+        reps: totalReps,
+        assigned_reps: assignedTotalReps,
         sets: totalSets,
         duration,
         avg_time: avgTime,
         form_score: formScore,
       };
-
-      console.log("Sending report payload:", payload);
 
       const res = await fetch(`${API_BASE}/generate_report`, {
         method: "POST",
@@ -195,7 +424,6 @@ export default function LiveWorkoutScreen() {
       });
 
       if (!res.ok) {
-        console.log("Response error:", res.status);
         Alert.alert("Error", "Failed to generate PDF report.");
         return;
       }
@@ -203,10 +431,8 @@ export default function LiveWorkoutScreen() {
       const data = await res.json();
       const fullUrl = `${API_BASE}${data.url}`;
       setPdfUrl(fullUrl);
-
       Alert.alert("Report Ready", "Tap 'Open PDF' to view or download.");
     } catch (e) {
-      console.log("PDF generation error:", e);
       Alert.alert("Error", "Something went wrong while generating the report.");
     }
   };
@@ -243,16 +469,22 @@ export default function LiveWorkoutScreen() {
   const progress = Math.min(1, count / (repsTarget || 1));
   const progressPercent = Math.round(progress * 100);
 
+  const trackedJoints = EXERCISE_JOINTS[exerciseKey] || [];
+  const segments = EXERCISE_SEGMENTS[exerciseKey] || [];
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.iconBtn}>
-          <Ionicons name="chevron-back" size={22} color={ColorTheme.fourth} />
+          <Ionicons
+            name="chevron-back"
+            size={22}
+            color={ColorTheme.fourth}
+          />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{name}</Text>
-          <Text style={styles.headerSub}>Live posture tracking</Text>
+          <Text style={styles.headerSub}>Live / Video-based tracking</Text>
           {patientName ? (
             <Text style={styles.headerPatient}>
               Patient: {patientName}
@@ -271,9 +503,31 @@ export default function LiveWorkoutScreen() {
         </View>
       </View>
 
-      {/* Camera + overlay */}
       <View style={styles.cameraWrapper}>
-        {Platform.OS === "web" ? (
+        {mode === "upload" ? (
+          processedVideoUri ? (
+            <Video
+              style={styles.camera}
+              source={{ uri: processedVideoUri }}
+              useNativeControls
+              resizeMode="contain"
+              isLooping
+            />
+          ) : (
+            <View
+              style={[
+                styles.camera,
+                { alignItems: "center", justifyContent: "center" },
+              ]}
+            >
+              <Text
+                style={{ color: "#fff", textAlign: "center", padding: 10 }}
+              >
+                Upload a video and tap “Analyze Video” to track reps.
+              </Text>
+            </View>
+          )
+        ) : Platform.OS === "web" ? (
           <View
             style={[
               styles.camera,
@@ -286,11 +540,50 @@ export default function LiveWorkoutScreen() {
             </Text>
           </View>
         ) : (
-          <CameraView
+          <PoseCamera
             style={styles.camera}
             facing="front"
             ref={cameraRef}
+            onPoseDetected={handlePoseDetected}
           />
+        )}
+
+        {mode === "live" && (
+          <Svg
+            pointerEvents="none"
+            style={StyleSheet.absoluteFill}
+            viewBox="0 0 1 1"
+          >
+            {segments.map(([a, b], idx) => {
+              const kpA = findKp(poseKeypoints, a);
+              const kpB = findKp(poseKeypoints, b);
+              if (!kpA || !kpB) return null;
+              return (
+                <Line
+                  key={`seg-${idx}`}
+                  x1={kpA.x}
+                  y1={kpA.y}
+                  x2={kpB.x}
+                  y2={kpB.y}
+                  stroke="lime"
+                  strokeWidth={0.01}
+                />
+              );
+            })}
+            {trackedJoints.map((j, idx) => {
+              const kp = findKp(poseKeypoints, j);
+              if (!kp) return null;
+              return (
+                <Circle
+                  key={`pt-${idx}`}
+                  cx={kp.x}
+                  cy={kp.y}
+                  r={0.015}
+                  fill="cyan"
+                />
+              );
+            })}
+          </Svg>
         )}
 
         <View style={styles.cameraOverlay}>
@@ -327,12 +620,11 @@ export default function LiveWorkoutScreen() {
               {count} / {repsTarget}
             </Text>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { flex: progress || 0.02 }]} />
               <View
-                style={[
-                  styles.progressEmpty,
-                  { flex: 1 - (progress || 0.02) },
-                ]}
+                style={[styles.progressFill, { flex: progress || 0.02 }]}
+              />
+              <View
+                style={[styles.progressEmpty, { flex: 1 - (progress || 0.02) }]}
               />
             </View>
             <Text style={styles.progressText}>
@@ -342,8 +634,53 @@ export default function LiveWorkoutScreen() {
         </View>
       </View>
 
-      {/* Bottom panel */}
       <View style={styles.bottomPanel}>
+        <View style={{ flexDirection: "row", marginBottom: 8 }}>
+          <TouchableOpacity
+            style={[
+              styles.modeChip,
+              mode === "live" && styles.modeChipActive,
+            ]}
+            onPress={() => {
+              setMode("live");
+              setSelectedVideo(null);
+              setAnalysisData(null);
+              setProcessedVideoUri(null);
+              setElapsed(0);
+              setRunning(true);
+            }}
+          >
+            <Text
+              style={[
+                styles.modeChipText,
+                mode === "live" && styles.modeChipTextActive,
+              ]}
+            >
+              Live
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.modeChip,
+              mode === "upload" && styles.modeChipActive,
+            ]}
+            onPress={() => {
+              setMode("upload");
+              setRunning(false);
+              setStage("-");
+            }}
+          >
+            <Text
+              style={[
+                styles.modeChipText,
+                mode === "upload" && styles.modeChipTextActive,
+              ]}
+            >
+              Upload Video
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statLabel}>Time</Text>
@@ -364,8 +701,122 @@ export default function LiveWorkoutScreen() {
           </View>
         </View>
 
-        {/* State logic */}
-        {!sessionEnded && !setCompleted && (
+        {mode === "upload" && (
+          <>
+            <TouchableOpacity
+              style={[styles.mainBtn, styles.secondaryBtn, { marginBottom: 8 }]}
+              onPress={async () => {
+                const result = await DocumentPicker.getDocumentAsync({
+                  type: "video/*",
+                });
+                if (result.canceled) return;
+                const asset =
+                  result.assets && result.assets.length > 0
+                    ? result.assets[0]
+                    : result;
+                setSelectedVideo(asset);
+                setAnalysisData(null);
+                setProcessedVideoUri(null);
+                Alert.alert("Video Selected", asset.name || "Video ready");
+              }}
+            >
+              <Ionicons
+                name="cloud-upload-outline"
+                size={18}
+                color={ColorTheme.fourth}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[styles.mainBtnText, { color: ColorTheme.fourth }]}
+              >
+                Choose Video
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.mainBtn, styles.primaryBtn, { marginBottom: 8 }]}
+              onPress={async () => {
+                if (!selectedVideo) {
+                  Alert.alert("No video", "Please choose a video first.");
+                  return;
+                }
+                try {
+                  const fileUri = selectedVideo.uri;
+                  const fileName = selectedVideo.name || "exercise.mp4";
+
+                  const formData = new FormData();
+                  formData.append("file", {
+                    uri: fileUri,
+                    name: fileName,
+                    type: "video/mp4",
+                  });
+                  formData.append("exercise_key", exerciseKey);
+                  formData.append(
+                    "patient_name",
+                    patientName || "Somay Singh"
+                  );
+                  formData.append(
+                    "patient_id",
+                    patientId || "P-2025-001"
+                  );
+                  formData.append("assigned_reps", String(repsTarget));
+                  formData.append("sets", String(totalSets));
+
+                  const res = await fetch(`${API_BASE}/analyze_video`, {
+                    method: "POST",
+                    body: formData,
+                  });
+
+                  if (!res.ok) {
+                    Alert.alert(
+                      "Error",
+                      "Failed to analyze the uploaded video."
+                    );
+                    return;
+                  }
+
+                  const data = await res.json();
+                  setAnalysisData(data);
+                  setTotalRepsDone(data.reps);
+                  setCount(data.reps);
+                  setElapsed(Math.round(data.duration));
+                  setFormLabel(
+                    data.form_score >= 0.8 ? "Good" : "Check Form"
+                  );
+                  setSessionEnded(true);
+                  setRunning(false);
+                  setSetCompleted(false);
+                  if (data.processed_video_url) {
+                    setProcessedVideoUri(`${API_BASE}${data.processed_video_url}`);
+                  }
+                  Alert.alert(
+                    "Analysis Complete",
+                    `Reps detected: ${data.reps}`
+                  );
+                } catch (err) {
+                  Alert.alert(
+                    "Error",
+                    "Something went wrong while analyzing the video."
+                  );
+                }
+              }}
+            >
+              <Ionicons
+                name="fitness-outline"
+                size={18}
+                color={ColorTheme.first}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[styles.mainBtnText, { color: ColorTheme.first }]}
+              >
+                Analyze Video
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {mode === "live" && !sessionEnded && !setCompleted && (
           <TouchableOpacity
             style={[styles.mainBtn, styles.stopBtn]}
             onPress={handleEndSession}
@@ -380,11 +831,9 @@ export default function LiveWorkoutScreen() {
           </TouchableOpacity>
         )}
 
-        {setCompleted && !sessionEnded && (
+        {setCompleted && !sessionEnded && mode === "live" && (
           <View style={styles.endActions}>
-            <Text style={styles.endTitle}>
-              Set {currentSet} completed
-            </Text>
+            <Text style={styles.endTitle}>Set {currentSet} completed</Text>
             <Text style={styles.endSub}>
               Reps this set: {count} • Total reps: {totalRepsDone}
             </Text>
@@ -395,7 +844,10 @@ export default function LiveWorkoutScreen() {
                 onPress={handleEndSession}
               >
                 <Text
-                  style={[styles.mainBtnText, { color: ColorTheme.fourth }]}
+                  style={[
+                    styles.mainBtnText,
+                    { color: ColorTheme.fourth },
+                  ]}
                 >
                   End Workout
                 </Text>
@@ -406,7 +858,10 @@ export default function LiveWorkoutScreen() {
                 onPress={handleStartNextSet}
               >
                 <Text
-                  style={[styles.mainBtnText, { color: ColorTheme.first }]}
+                  style={[
+                    styles.mainBtnText,
+                    { color: ColorTheme.first },
+                  ]}
                 >
                   Start Next Set
                 </Text>
@@ -419,7 +874,8 @@ export default function LiveWorkoutScreen() {
           <View style={styles.endActions}>
             <Text style={styles.endTitle}>Session completed</Text>
             <Text style={styles.endSub}>
-              Total reps: {totalRepsDone} • Duration: {elapsed.toFixed(1)} sec
+              Total reps: {analysisData?.reps ?? totalRepsDone} • Duration:{" "}
+              {(analysisData?.duration ?? elapsed).toFixed(1)} sec
             </Text>
 
             <View style={styles.endButtonsRow}>
@@ -428,7 +884,10 @@ export default function LiveWorkoutScreen() {
                 onPress={handleRedo}
               >
                 <Text
-                  style={[styles.mainBtnText, { color: ColorTheme.fourth }]}
+                  style={[
+                    styles.mainBtnText,
+                    { color: ColorTheme.fourth },
+                  ]}
                 >
                   Repeat Workout
                 </Text>
@@ -439,7 +898,10 @@ export default function LiveWorkoutScreen() {
                 onPress={handleGeneratePdf}
               >
                 <Text
-                  style={[styles.mainBtnText, { color: ColorTheme.first }]}
+                  style={[
+                    styles.mainBtnText,
+                    { color: ColorTheme.first },
+                  ]}
                 >
                   Generate PDF
                 </Text>
@@ -458,7 +920,10 @@ export default function LiveWorkoutScreen() {
                   style={{ marginRight: 6 }}
                 />
                 <Text
-                  style={[styles.mainBtnText, { color: ColorTheme.first }]}
+                  style={[
+                    styles.mainBtnText,
+                    { color: ColorTheme.first },
+                  ]}
                 >
                   Open PDF
                 </Text>
@@ -474,7 +939,6 @@ export default function LiveWorkoutScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: ColorTheme.first },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -495,7 +959,6 @@ const styles = StyleSheet.create({
     backgroundColor: ColorTheme.fourth,
   },
   chipText: { fontSize: 11, fontWeight: "600", color: ColorTheme.first },
-
   cameraWrapper: {
     flex: 1.2,
     marginHorizontal: 16,
@@ -512,7 +975,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     padding: 10,
   },
-
   badgeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -526,7 +988,6 @@ const styles = StyleSheet.create({
   },
   badgeLabel: { fontSize: 10, color: "#cbd5f5" },
   badgeValue: { fontSize: 14, fontWeight: "700", color: "#e5e7ff" },
-
   formBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -537,7 +998,6 @@ const styles = StyleSheet.create({
   formGood: { backgroundColor: "rgba(34,197,94,0.9)" },
   formCheck: { backgroundColor: "rgba(239,68,68,0.9)" },
   formText: { fontSize: 11, fontWeight: "600", color: ColorTheme.first },
-
   counterBox: {
     marginTop: 4,
     padding: 8,
@@ -557,7 +1017,6 @@ const styles = StyleSheet.create({
   progressFill: { backgroundColor: "#22c55e" },
   progressEmpty: { backgroundColor: "transparent" },
   progressText: { marginTop: 2, fontSize: 10, color: "#e5e7eb" },
-
   bottomPanel: {
     flex: 0.9,
     paddingHorizontal: 16,
@@ -566,6 +1025,26 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     backgroundColor: ColorTheme.second,
+  },
+  modeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    marginRight: 6,
+  },
+  modeChipActive: {
+    backgroundColor: ColorTheme.fourth,
+    borderColor: ColorTheme.fourth,
+  },
+  modeChipText: {
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  modeChipTextActive: {
+    color: ColorTheme.first,
   },
   statsRow: {
     flexDirection: "row",
@@ -585,7 +1064,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: ColorTheme.fourth,
   },
-
   mainBtn: {
     height: 46,
     borderRadius: 999,
@@ -595,11 +1073,9 @@ const styles = StyleSheet.create({
   },
   mainBtnText: { fontSize: 14, fontWeight: "700" },
   stopBtn: { marginTop: 6, backgroundColor: "#fecaca" },
-
   endActions: { marginTop: 4 },
   endTitle: { fontSize: 16, fontWeight: "700", color: ColorTheme.fourth },
   endSub: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-
   endButtonsRow: {
     flexDirection: "row",
     marginTop: 10,

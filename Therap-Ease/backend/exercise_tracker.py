@@ -1,11 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 from fpdf import FPDF
 from datetime import datetime
 import os
+import time
+
+import cv2
+import numpy as np
+import mediapipe as mp
 
 app = FastAPI()
 
@@ -17,63 +21,149 @@ app.add_middleware(
 )
 
 REPORT_DIR = "reports"
+VIDEO_DIR = "videos"
+
 os.makedirs(REPORT_DIR, exist_ok=True)
+os.makedirs(VIDEO_DIR, exist_ok=True)
 
 app.mount("/reports", StaticFiles(directory=REPORT_DIR), name="reports")
+app.mount("/videos", StaticFiles(directory=VIDEO_DIR), name="videos")
 
-class ReportRequest(BaseModel):
-    patient_name: str
-    patient_id: str
-    exercise: str
-    exercise_key: str
-    reps: int
-    sets: int | None = None
-    duration: float
-    avg_time: float
-    form_score: float
-    age: int | None = None
-    medical_history: str | None = None
-    goal: str | None = None
+mp_pose = mp.solutions.pose
 
-def make_pdf(req: ReportRequest) -> str:
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "Physiotherapy Exercise Session Report – TherapEase", ln=True)
+EXERCISES = {
+    "bicep_curl": [
+        "LEFT_ELBOW",
+        "RIGHT_ELBOW",
+        "LEFT_SHOULDER",
+        "RIGHT_SHOULDER",
+        "LEFT_WRIST",
+        "RIGHT_WRIST",
+    ],
+    "squat": [
+        "LEFT_HIP",
+        "RIGHT_HIP",
+        "LEFT_KNEE",
+        "RIGHT_KNEE",
+        "LEFT_ANKLE",
+        "RIGHT_ANKLE",
+    ],
+    "shoulder_abduction": [
+        "LEFT_SHOULDER",
+        "RIGHT_SHOULDER",
+        "LEFT_ELBOW",
+        "RIGHT_ELBOW",
+    ],
+    "knee_extension": ["LEFT_HIP", "RIGHT_HIP", "LEFT_KNEE", "RIGHT_KNEE"],
+    "leg_raise": [
+        "LEFT_HIP",
+        "RIGHT_HIP",
+        "LEFT_KNEE",
+        "RIGHT_KNEE",
+        "LEFT_ANKLE",
+        "RIGHT_ANKLE",
+    ],
+    "side_bend": ["LEFT_SHOULDER", "RIGHT_SHOULDER", "LEFT_HIP", "RIGHT_HIP"],
+}
 
-    pdf.set_font("Arial", "", 12)
-    pdf.ln(4)
-    pdf.multi_cell(0, 8, f"Patient Name: {req.patient_name}")
-    pdf.multi_cell(0, 8, f"Patient ID: {req.patient_id}")
-    pdf.multi_cell(0, 8, f"Age: {req.age}")
-    pdf.multi_cell(0, 8, f"Date: {datetime.now().strftime('%d %B %Y')}")
 
-    pdf.ln(5)
-    pdf.set_font("Arial", "B", 13)
-    pdf.multi_cell(0, 8, "Session Summary")
+def calculate_angle(a, b, c):
+    a = np.array(a)
+    b = np.array(b)
+    c = np.array(c)
+    radians = np.arctan2(c[1] - b[1], c[0] - b[0]) - np.arctan2(
+        a[1] - b[1], a[0] - b[0]
+    )
+    angle = np.abs(radians * 180.0 / np.pi)
+    if angle > 180:
+        angle = 360 - angle
+    return float(angle)
 
-    pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(0, 7, f"Exercise: {req.exercise}")
-    pdf.multi_cell(0, 7, f"Reps: {req.reps}")
-    pdf.multi_cell(0, 7, f"Duration: {req.duration:.1f} sec")
-    pdf.multi_cell(0, 7, f"Average Speed: {req.avg_speed:.2f}")
-    pdf.multi_cell(0, 7, f"Form Score: {req.form_score * 100:.1f} / 100")
 
-    filename = f"{req.exercise_key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    filepath = os.path.join(REPORT_DIR, filename)
-    pdf.output(filepath)
-    return filepath
+def assess_form(exercise: str, angle: float):
+    ideal_ranges = {
+        "bicep_curl": (30, 160),
+        "squat": (70, 160),
+        "shoulder_abduction": (70, 160),
+        "knee_extension": (0, 160),
+        "leg_raise": (40, 150),
+        "side_bend": (10, 35),
+    }
+    ideal_min, ideal_max = ideal_ranges.get(exercise, (60, 150))
 
-from fastapi import Request
+    if angle < ideal_min:
+        diff = ideal_min - angle
+    elif angle > ideal_max:
+        diff = angle - ideal_max
+    else:
+        diff = 0
+    score = max(0.0, 1.0 - (diff / 60))
+
+    feedback = "Keep form consistent."
+    if exercise == "bicep_curl":
+        if angle < 60:
+            feedback = "Great contraction!"
+        elif angle > 160:
+            feedback = "Full extension!"
+        else:
+            feedback = "Complete your motion fully."
+    elif exercise == "squat":
+        if angle < 95:
+            feedback = "Nice deep squat!"
+        elif angle > 160:
+            feedback = "Standing tall."
+        else:
+            feedback = "Try going a bit lower."
+    elif exercise == "shoulder_abduction":
+        feedback = (
+            "Good arm raise!" if angle > 120 else "Lift higher for full range."
+        )
+    elif exercise == "knee_extension":
+        feedback = (
+            "Full knee extension achieved!"
+            if angle > 160
+            else "Straighten knee more."
+        )
+    elif exercise == "leg_raise":
+        feedback = (
+            "Leg raised high enough!" if angle > 140 else "Lift leg higher."
+        )
+    elif exercise == "side_bend":
+        feedback = (
+            "Nice side bend!" if 15 < angle < 35 else "Bend slightly more to side."
+        )
+
+    return feedback, score
+
+
+def draw_skeleton(image, landmarks, involved_names, color=(0, 255, 0)):
+    h, w = image.shape[:2]
+    involved_indices = []
+    for name in involved_names:
+        if name in mp_pose.PoseLandmark.__members__:
+            involved_indices.append(mp_pose.PoseLandmark[name].value)
+
+    for conn in mp_pose.POSE_CONNECTIONS:
+        a_idx = conn[0].value if hasattr(conn[0], "value") else conn[0]
+        b_idx = conn[1].value if hasattr(conn[1], "value") else conn[1]
+        if a_idx in involved_indices and b_idx in involved_indices:
+            a_point = landmarks[a_idx]
+            b_point = landmarks[b_idx]
+            if a_point.visibility > 0.5 and b_point.visibility > 0.5:
+                ax, ay = int(a_point.x * w), int(a_point.y * h)
+                bx, by = int(b_point.x * w), int(b_point.y * h)
+                cv2.line(image, (ax, ay), (bx, by), color, 3)
+    for idx in involved_indices:
+        p = landmarks[idx]
+        if p.visibility > 0.5:
+            cx, cy = int(p.x * w), int(p.y * h)
+            cv2.circle(image, (cx, cy), 6, (255, 255, 0), -1)
+    return image
+
 
 @app.post("/generate_report")
 async def generate_report(request: Request):
-    """
-    Generate a PDF session report similar to the sample TherapEase report,
-    with ASCII bar-style visualizations (no Unicode, safe for FPDF).
-    """
     data = await request.json()
-    print("Incoming report data:", data)
 
     patient_name = data.get("patient_name", "Unknown Patient")
     patient_id = data.get("patient_id", "N/A")
@@ -87,7 +177,6 @@ async def generate_report(request: Request):
     assigned_reps = int(data.get("assigned_reps", 0))
 
     form_score = float(data.get("form_score", 0.0) or 0.0)
-
     if form_score <= 1.0:
         form_score = form_score * 100.0
 
@@ -113,12 +202,12 @@ async def generate_report(request: Request):
         filled = int(ratio * length)
         return "[" + "#" * filled + "-" * (length - filled) + "]"
 
-    reps_target = max(reps, 10) if reps > 0 else 10    # baseline 10
-    duration_target = 30.0                             # recommended 30 sec
-    speed_target = 10.0                                # arbitrary max index
-    form_target = 100.0                                # max score
+    reps_target = max(reps, 10) if reps > 0 else 10
+    duration_target = 30.0
+    speed_target = 10.0
+    form_target = 100.0
 
-    reps_bar = make_bar(reps, assigned_reps)
+    reps_bar = make_bar(reps, assigned_reps or reps_target)
     dur_bar = make_bar(duration, duration_target)
     speed_bar = make_bar(avg_time, speed_target)
     form_bar = make_bar(form_score, form_target)
@@ -154,11 +243,15 @@ async def generate_report(request: Request):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # ========== PAGE 1 ==========
     pdf.add_page()
-
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "Physiotherapy Exercise Session Report - TherapEase", ln=1, align="C")
+    pdf.cell(
+        0,
+        10,
+        "Physiotherapy Exercise Session Report - TherapEase",
+        ln=1,
+        align="C",
+    )
 
     pdf.ln(4)
     pdf.set_font("Helvetica", "B", 12)
@@ -196,9 +289,7 @@ async def generate_report(request: Request):
         f"   d. Notes: Maintain controlled motion and alignment throughout.",
     )
 
-    # ========== PAGE 2 ==========
     pdf.add_page()
-
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 8, "Session Summary", ln=1)
 
@@ -208,27 +299,22 @@ async def generate_report(request: Request):
     pdf.cell(70, 7, "Interpretation", border=1, ln=1)
 
     pdf.set_font("Helvetica", "", 10)
-
     pdf.cell(60, 7, "Exercise", border=1)
     pdf.cell(60, 7, exercise, border=1)
     pdf.cell(70, 7, "Primary movement", border=1, ln=1)
 
-    # Reps row
     pdf.cell(60, 7, "Repetitions", border=1)
     pdf.cell(60, 7, f"{reps} / {assigned_reps}", border=1)
     pdf.cell(70, 7, reps_interp, border=1, ln=1)
 
-    # Duration row
     pdf.cell(60, 7, "Session Duration", border=1)
     pdf.cell(60, 7, f"{duration:.1f} sec", border=1)
     pdf.cell(70, 7, duration_interp, border=1, ln=1)
 
-    # Speed row
     pdf.cell(60, 7, "Average Speed", border=1)
     pdf.cell(60, 7, f"{avg_time:.2f}", border=1)
     pdf.cell(70, 7, speed_interp, border=1, ln=1)
 
-    # Form score row
     pdf.cell(60, 7, "Form Score", border=1)
     pdf.cell(60, 7, f"{form_score:.1f} / 100", border=1)
     pdf.cell(70, 7, form_interp, border=1, ln=1)
@@ -238,8 +324,6 @@ async def generate_report(request: Request):
     pdf.cell(0, 8, f"Exercise Performance Overview ({exercise})", ln=1)
 
     pdf.set_font("Helvetica", "", 11)
-
-    # Reps visualization
     pdf.cell(0, 6, f"Repetitions ({reps})", ln=1)
     pdf.set_font("Courier", "", 10)
     pdf.cell(0, 5, f"{reps_bar}  {reps} / {reps_target} reps", ln=1)
@@ -276,10 +360,190 @@ async def generate_report(request: Request):
     filepath = os.path.join(REPORT_DIR, filename)
     pdf.output(filepath)
 
-    print("Saved report to:", filepath)
     return {"url": f"/reports/{filename}"}
+
 
 @app.get("/reports/{filename}")
 def get_report(filename: str):
-    filepath = os.path.join("reports", filename)
+    filepath = os.path.join(REPORT_DIR, filename)
     return FileResponse(filepath, media_type="application/pdf")
+
+
+@app.post("/analyze_video")
+async def analyze_video(
+    file: UploadFile = File(...),
+    exercise_key: str = Form(...),
+    patient_name: str = Form("Somay Singh"),
+    patient_id: str = Form("P-2025-001"),
+    assigned_reps: int = Form(10),
+    sets: int = Form(1),
+):
+    ext = os.path.splitext(file.filename or "video.mp4")[1]
+    raw_name = datetime.now().strftime("%Y%m%d_%H%M%S")
+    input_name = f"{raw_name}{ext}"
+    processed_name = f"proc_{raw_name}.mp4"
+
+    video_path = os.path.join(VIDEO_DIR, input_name)
+    processed_path = os.path.join(VIDEO_DIR, processed_name)
+
+    contents = await file.read()
+    with open(video_path, "wb") as f:
+        f.write(contents)
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return JSONResponse({"detail": "Could not open video"}, status_code=400)
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 480)
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(processed_path, fourcc, fps, (width, height))
+
+    start_time = time.time()
+    reps = 0
+    rep_times = []
+    last_rep_ts = None
+    form_scores = []
+    feedbacks = []
+    stage = None
+
+    involved_names = EXERCISES.get(exercise_key, [])
+
+    with mp_pose.Pose(
+        min_detection_confidence=0.6,
+        min_tracking_confidence=0.6
+    ) as pose:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            frame = cv2.resize(frame, (width, height))
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = pose.process(rgb)
+
+            if not results.pose_landmarks:
+                out.write(frame)
+                continue
+
+            lm = results.pose_landmarks.landmark
+
+            angles = []
+            if exercise_key in ["bicep_curl", "shoulder_abduction"]:
+                for side in ["LEFT", "RIGHT"]:
+                    shoulder = [
+                        lm[mp_pose.PoseLandmark[f"{side}_SHOULDER"].value].x,
+                        lm[mp_pose.PoseLandmark[f"{side}_SHOULDER"].value].y,
+                    ]
+                    elbow = [
+                        lm[mp_pose.PoseLandmark[f"{side}_ELBOW"].value].x,
+                        lm[mp_pose.PoseLandmark[f"{side}_ELBOW"].value].y,
+                    ]
+                    wrist = [
+                        lm[mp_pose.PoseLandmark[f"{side}_WRIST"].value].x,
+                        lm[mp_pose.PoseLandmark[f"{side}_WRIST"].value].y,
+                    ]
+                    angles.append(calculate_angle(shoulder, elbow, wrist))
+            elif exercise_key in ["squat", "knee_extension", "leg_raise"]:
+                for side in ["LEFT", "RIGHT"]:
+                    hip = [
+                        lm[mp_pose.PoseLandmark[f"{side}_HIP"].value].x,
+                        lm[mp_pose.PoseLandmark[f"{side}_HIP"].value].y,
+                    ]
+                    knee = [
+                        lm[mp_pose.PoseLandmark[f"{side}_KNEE"].value].x,
+                        lm[mp_pose.PoseLandmark[f"{side}_KNEE"].value].y,
+                    ]
+                    ankle = [
+                        lm[mp_pose.PoseLandmark[f"{side}_ANKLE"].value].x,
+                        lm[mp_pose.PoseLandmark[f"{side}_ANKLE"].value].y,
+                    ]
+                    angles.append(calculate_angle(hip, knee, ankle))
+            elif exercise_key == "side_bend":
+                left_shoulder = [
+                    lm[mp_pose.PoseLandmark.LEFT_SHOULDER].x,
+                    lm[mp_pose.PoseLandmark.LEFT_SHOULDER].y,
+                ]
+                right_shoulder = [
+                    lm[mp_pose.PoseLandmark.RIGHT_SHOULDER].x,
+                    lm[mp_pose.PoseLandmark.RIGHT_SHOULDER].y,
+                ]
+                left_hip = [
+                    lm[mp_pose.PoseLandmark.LEFT_HIP].x,
+                    lm[mp_pose.PoseLandmark.LEFT_HIP].y,
+                ]
+                right_hip = [
+                    lm[mp_pose.PoseLandmark.RIGHT_HIP].x,
+                    lm[mp_pose.PoseLandmark.RIGHT_HIP].y,
+                ]
+                angles.append(calculate_angle(left_shoulder, left_hip, right_hip))
+                angles.append(calculate_angle(right_shoulder, right_hip, left_hip))
+
+            if angles:
+                angle = float(np.mean(angles))
+                feedback, score = assess_form(exercise_key, angle)
+                form_scores.append(score)
+                feedbacks.append(feedback)
+            else:
+                angle = 0.0
+
+            down_thresh, up_thresh = 100, 160
+            if exercise_key in ["bicep_curl", "shoulder_abduction"]:
+                if angle > 150:
+                    stage = "down"
+                if angle < 50 and stage == "down":
+                    stage = "up"
+                    reps += 1
+                    now = time.time()
+                    if last_rep_ts:
+                        rep_times.append(now - last_rep_ts)
+                    last_rep_ts = now
+            elif exercise_key in ["squat", "knee_extension", "leg_raise"]:
+                if angle > up_thresh:
+                    stage = "up"
+                if angle < down_thresh and stage == "up":
+                    stage = "down"
+                    reps += 1
+                    now = time.time()
+                    if last_rep_ts:
+                        rep_times.append(now - last_rep_ts)
+                    last_rep_ts = now
+            elif exercise_key == "side_bend":
+                if angle > 40:
+                    stage = "up"
+                if angle < 25 and stage == "up":
+                    stage = "down"
+                    reps += 1
+                    now = time.time()
+                    if last_rep_ts:
+                        rep_times.append(now - last_rep_ts)
+                    last_rep_ts = now
+
+            frame = draw_skeleton(frame, lm, involved_names)
+            out.write(frame)
+
+    cap.release()
+    out.release()
+
+    duration = time.time() - start_time
+    avg_time = float(np.mean(rep_times)) if rep_times else 0.0
+    avg_score = float(np.mean(form_scores)) if form_scores else 0.0
+    feedback_summary = ", ".join(sorted(set(feedbacks))) if feedbacks else ""
+
+    return JSONResponse(
+        {
+            "video_url": f"/videos/{input_name}",
+            "processed_video_url": f"/videos/{processed_name}",
+            "exercise_key": exercise_key,
+            "patient_name": patient_name,
+            "patient_id": patient_id,
+            "reps": reps,
+            "assigned_reps": int(assigned_reps),
+            "sets": int(sets),
+            "duration": duration,
+            "avg_time": avg_time,
+            "form_score": avg_score,
+            "feedback_summary": feedback_summary,
+        }
+    )
