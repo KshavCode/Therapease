@@ -141,6 +141,7 @@ function findKp(keypoints, name) {
 }
 
 const PoseCamera = React.forwardRef(({ onPoseDetected, ...props }, ref) => {
+  // Your custom CameraView wrapper should call onPoseDetected(pose) internally
   return <CameraView ref={ref} {...props} />;
 });
 
@@ -178,6 +179,7 @@ export default function LiveWorkoutScreen() {
   const [processedVideoUri, setProcessedVideoUri] = useState(null);
 
   const [poseKeypoints, setPoseKeypoints] = useState([]);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -195,6 +197,20 @@ export default function LiveWorkoutScreen() {
     const id = setInterval(() => setElapsed((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [running, mode]);
+
+  useEffect(() => {
+    if (!processedVideoUri || !videoRef.current) return;
+    (async () => {
+      try {
+        await videoRef.current.loadAsync(
+          { uri: processedVideoUri },
+          { shouldPlay: true, isLooping: true }
+        );
+      } catch (e) {
+        console.log("Video load/play error:", e);
+      }
+    })();
+  }, [processedVideoUri]);
 
   const updateFromPose = (pose) => {
     if (!running || sessionEnded || setCompleted || !pose || mode !== "live")
@@ -507,11 +523,13 @@ export default function LiveWorkoutScreen() {
         {mode === "upload" ? (
           processedVideoUri ? (
             <Video
+              ref={videoRef}
               style={styles.camera}
               source={{ uri: processedVideoUri }}
-              useNativeControls
               resizeMode="contain"
+              useNativeControls
               isLooping
+              onError={(e) => console.log("Video error:", e)}
             />
           ) : (
             <View
@@ -520,9 +538,7 @@ export default function LiveWorkoutScreen() {
                 { alignItems: "center", justifyContent: "center" },
               ]}
             >
-              <Text
-                style={{ color: "#fff", textAlign: "center", padding: 10 }}
-              >
+              <Text style={{ color: "#fff", textAlign: "center", padding: 10 }}>
                 Upload a video and tap “Analyze Video” to track reps.
               </Text>
             </View>
@@ -787,7 +803,9 @@ export default function LiveWorkoutScreen() {
                   setRunning(false);
                   setSetCompleted(false);
                   if (data.processed_video_url) {
-                    setProcessedVideoUri(`${API_BASE}${data.processed_video_url}`);
+                    setProcessedVideoUri(
+                      `${API_BASE}${data.processed_video_url}`
+                    );
                   }
                   Alert.alert(
                     "Analysis Complete",
