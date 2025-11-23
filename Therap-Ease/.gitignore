@@ -1,4 +1,6 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+*.pdf
+*.mp4
 
 # dependencies
 node_modules/
