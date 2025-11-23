@@ -42,7 +42,6 @@ Therap-Ease is an intelligent physiotherapy platform designed to modernize exerc
 | **Mobile App** | React Native (Expo), Axios, SVG |
 | **Backend** | FastAPI, Python |
 | **Pose Estimation** | MediaPipe Pose, OpenCV, NumPy |
-| **UI Prototype** | Streamlit |
 | **Reporting** | FPDF |
 
 ---
