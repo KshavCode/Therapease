@@ -1,10 +1,8 @@
-import * as ImagePicker from "expo-image-picker";
 import React from "react";
 import {
   ScrollView,
   StyleSheet,
   Text,
-  ToastAndroid,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,7 +15,6 @@ const ExerciseScreen = (props) => {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // Use URL params if present, otherwise fall back to props, otherwise defaults
   const name = params.name || props.name || "Squats";
   const reps = params.reps || props.reps || "10";
   const sets = params.sets || props.sets || "3";
@@ -29,37 +26,10 @@ const ExerciseScreen = (props) => {
     "Keep your back straight and move in a slow, controlled manner.";
   const exerciseKey = params.exerciseKey || props.exerciseKey || "squat";
 
-  // Optional patient context (from Patients screen / Home)
   const patientName = params.patientName || props.patientName || null;
   const patientId = params.patientId || props.patientId || null;
 
-  const [image, setImage] = React.useState(null);
-
-  const spawnToast = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permissionResult.granted) {
-      ToastAndroid.show(
-        "Permission to access the media library is required.",
-        ToastAndroid.SHORT
-      );
-      return;
-    }
-
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-      ToastAndroid.show("Video selected successfully.", ToastAndroid.SHORT);
-    }
-  };
-
   const handleStartLive = () => {
-    // Go to the live tracking screen and pass exercise + patient details
     router.push({
       pathname: "/live-workout",
       params: {
@@ -70,7 +40,23 @@ const ExerciseScreen = (props) => {
         doctor,
         endDate,
         notes,
-        // forward patient information if available
+        patientName: patientName || "",
+        patientId: patientId || "",
+      },
+    });
+  };
+
+  const handleUploadPress = () => {
+    router.push({
+      pathname: "/upload-workout",
+      params: {
+        exerciseKey,
+        name,
+        reps: String(reps),
+        sets: String(sets),
+        doctor,
+        endDate,
+        notes,
         patientName: patientName || "",
         patientId: patientId || "",
       },
@@ -83,7 +69,6 @@ const ExerciseScreen = (props) => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.headerWrapper}>
           <View style={styles.headerBadge}>
             <Ionicons
@@ -100,7 +85,6 @@ const ExerciseScreen = (props) => {
           </Text>
         </View>
 
-        {/* Live tracking card */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Live Tracking</Text>
           <Text style={styles.sectionSubtitle}>
@@ -119,60 +103,36 @@ const ExerciseScreen = (props) => {
           </TouchableOpacity>
         </View>
 
-        {/* Upload section */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Exercise Video</Text>
           <Text style={styles.sectionSubtitle}>
             Upload a video of you performing this exercise so your doctor can
-            review your form.
+            review your form and metrics.
           </Text>
 
-          {!image && (
-            <TouchableOpacity style={styles.uploadButton} onPress={spawnToast}>
-              <View style={styles.uploadIconWrapper}>
-                <Ionicons
-                  name="cloud-upload-outline"
-                  size={22}
-                  color={ColorTheme.fourth}
-                />
-              </View>
-              <View>
-                <Text style={styles.uploadText}>Upload Video</Text>
-                <Text style={styles.uploadHint}>MP4 / MOV · Short clips</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {image && (
-            <View style={styles.uploadStatusRow}>
-              <View style={styles.uploadStatusPill}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={ColorTheme.first}
-                />
-                <Text style={styles.uploadStatusText}>Video uploaded</Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => setImage(null)}
-                style={styles.deleteButton}
-              >
-                <Ionicons
-                  name="trash-sharp"
-                  size={20}
-                  color={ColorTheme.error}
-                />
-              </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={handleUploadPress}
+          >
+            <View style={styles.uploadIconWrapper}>
+              <Ionicons
+                name="cloud-upload-outline"
+                size={22}
+                color={ColorTheme.fourth}
+              />
             </View>
-          )}
+            <View>
+              <Text style={styles.uploadText}>Go to Upload Screen</Text>
+              <Text style={styles.uploadHint}>
+                You’ll choose and analyze your video there.
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Details card */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Exercise Details</Text>
 
-          {/* Show patient if available */}
           {patientName && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Patient</Text>
@@ -214,7 +174,6 @@ const ExerciseScreen = (props) => {
           </View>
         </View>
 
-        {/* Help section */}
         <View style={styles.helpWrapper}>
           <Ionicons
             name="help-circle-outline"
@@ -250,8 +209,6 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     alignItems: "center",
   },
-
-  // Header
   headerWrapper: {
     width: "100%",
     marginBottom: 16,
@@ -283,8 +240,6 @@ const styles = StyleSheet.create({
     color: ColorTheme.fourth,
     opacity: 0.8,
   },
-
-  // Cards
   card: {
     width: "100%",
     backgroundColor: ColorTheme.second,
@@ -306,8 +261,6 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     marginBottom: 12,
   },
-
-  // Live button
   liveButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -322,8 +275,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: ColorTheme.first,
   },
-
-  // Upload
   uploadButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -355,31 +306,6 @@ const styles = StyleSheet.create({
     color: ColorTheme.fourth,
     opacity: 0.8,
   },
-  uploadStatusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-    justifyContent: "space-between",
-  },
-  uploadStatusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: ColorTheme.fourth,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  uploadStatusText: {
-    marginLeft: 6,
-    fontSize: 13,
-    fontWeight: "600",
-    color: ColorTheme.first,
-  },
-  deleteButton: {
-    padding: 4,
-  },
-
-  // Details
   detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -399,8 +325,6 @@ const styles = StyleSheet.create({
   detailNotes: {
     lineHeight: 18,
   },
-
-  // Help section
   helpWrapper: {
     marginTop: 20,
     alignItems: "center",

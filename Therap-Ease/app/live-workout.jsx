@@ -12,9 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Camera, CameraView } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as DocumentPicker from "expo-document-picker";
 import Svg, { Circle, Line } from "react-native-svg";
-import { Video } from "expo-av";
 import { ColorTheme } from "../constants/GlobalStyles";
 
 const API_BASE = "http://192.168.1.9:8000";
@@ -173,13 +171,7 @@ export default function LiveWorkoutScreen() {
   const [currentSet, setCurrentSet] = useState(1);
   const [pdfUrl, setPdfUrl] = useState(null);
 
-  const [mode, setMode] = useState("live");
-  const [selectedVideo, setSelectedVideo] = useState(null);
-  const [analysisData, setAnalysisData] = useState(null);
-  const [processedVideoUri, setProcessedVideoUri] = useState(null);
-
   const [poseKeypoints, setPoseKeypoints] = useState([]);
-  const videoRef = useRef(null);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -193,28 +185,13 @@ export default function LiveWorkoutScreen() {
   }, []);
 
   useEffect(() => {
-    if (!running || mode !== "live") return;
+    if (!running || sessionEnded) return;
     const id = setInterval(() => setElapsed((t) => t + 1), 1000);
     return () => clearInterval(id);
-  }, [running, mode]);
-
-  useEffect(() => {
-    if (!processedVideoUri || !videoRef.current) return;
-    (async () => {
-      try {
-        await videoRef.current.loadAsync(
-          { uri: processedVideoUri },
-          { shouldPlay: true, isLooping: true }
-        );
-      } catch (e) {
-        console.log("Video load/play error:", e);
-      }
-    })();
-  }, [processedVideoUri]);
+  }, [running, sessionEnded]);
 
   const updateFromPose = (pose) => {
-    if (!running || sessionEnded || setCompleted || !pose || mode !== "live")
-      return;
+    if (!running || sessionEnded || setCompleted || !pose) return;
 
     setPoseKeypoints(pose.keypoints || []);
 
@@ -385,8 +362,6 @@ export default function LiveWorkoutScreen() {
     setSetCompleted(false);
     setRunning(true);
     setPdfUrl(null);
-    setAnalysisData(null);
-    setProcessedVideoUri(null);
   };
 
   const handleRedo = () => {
@@ -401,9 +376,7 @@ export default function LiveWorkoutScreen() {
     setCurrentSet(1);
     setRunning(true);
     setPdfUrl(null);
-    setAnalysisData(null);
     setPoseKeypoints([]);
-    setProcessedVideoUri(null);
   };
 
   const handleBack = () => {
@@ -412,12 +385,11 @@ export default function LiveWorkoutScreen() {
 
   const handleGeneratePdf = async () => {
     try {
-      const duration = analysisData ? analysisData.duration : elapsed;
-      const totalReps = analysisData ? analysisData.reps : totalRepsDone;
+      const duration = elapsed;
+      const totalReps = totalRepsDone;
       const assignedTotalReps = repsTarget * totalSets;
       const avgTime = totalReps > 0 ? duration / totalReps : 0;
-      const formScore =
-        analysisData?.form_score ?? (formLabel === "Good" ? 0.9 : 0.7);
+      const formScore = formLabel === "Good" ? 0.9 : 0.7;
       const exerciseName = name || exerciseKey;
 
       const payload = {
@@ -500,7 +472,7 @@ export default function LiveWorkoutScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{name}</Text>
-          <Text style={styles.headerSub}>Live / Video-based tracking</Text>
+          <Text style={styles.headerSub}>Live tracking</Text>
           {patientName ? (
             <Text style={styles.headerPatient}>
               Patient: {patientName}
@@ -520,30 +492,7 @@ export default function LiveWorkoutScreen() {
       </View>
 
       <View style={styles.cameraWrapper}>
-        {mode === "upload" ? (
-          processedVideoUri ? (
-            <Video
-              ref={videoRef}
-              style={styles.camera}
-              source={{ uri: processedVideoUri }}
-              resizeMode="contain"
-              useNativeControls
-              isLooping
-              onError={(e) => console.log("Video error:", e)}
-            />
-          ) : (
-            <View
-              style={[
-                styles.camera,
-                { alignItems: "center", justifyContent: "center" },
-              ]}
-            >
-              <Text style={{ color: "#fff", textAlign: "center", padding: 10 }}>
-                Upload a video and tap “Analyze Video” to track reps.
-              </Text>
-            </View>
-          )
-        ) : Platform.OS === "web" ? (
+        {Platform.OS === "web" ? (
           <View
             style={[
               styles.camera,
@@ -564,43 +513,41 @@ export default function LiveWorkoutScreen() {
           />
         )}
 
-        {mode === "live" && (
-          <Svg
-            pointerEvents="none"
-            style={StyleSheet.absoluteFill}
-            viewBox="0 0 1 1"
-          >
-            {segments.map(([a, b], idx) => {
-              const kpA = findKp(poseKeypoints, a);
-              const kpB = findKp(poseKeypoints, b);
-              if (!kpA || !kpB) return null;
-              return (
-                <Line
-                  key={`seg-${idx}`}
-                  x1={kpA.x}
-                  y1={kpA.y}
-                  x2={kpB.x}
-                  y2={kpB.y}
-                  stroke="lime"
-                  strokeWidth={0.01}
-                />
-              );
-            })}
-            {trackedJoints.map((j, idx) => {
-              const kp = findKp(poseKeypoints, j);
-              if (!kp) return null;
-              return (
-                <Circle
-                  key={`pt-${idx}`}
-                  cx={kp.x}
-                  cy={kp.y}
-                  r={0.015}
-                  fill="cyan"
-                />
-              );
-            })}
-          </Svg>
-        )}
+        <Svg
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+          viewBox="0 0 1 1"
+        >
+          {segments.map(([a, b], idx) => {
+            const kpA = findKp(poseKeypoints, a);
+            const kpB = findKp(poseKeypoints, b);
+            if (!kpA || !kpB) return null;
+            return (
+              <Line
+                key={`seg-${idx}`}
+                x1={kpA.x}
+                y1={kpA.y}
+                x2={kpB.x}
+                y2={kpB.y}
+                stroke="lime"
+                strokeWidth={0.01}
+              />
+            );
+          })}
+          {trackedJoints.map((j, idx) => {
+            const kp = findKp(poseKeypoints, j);
+            if (!kp) return null;
+            return (
+              <Circle
+                key={`pt-${idx}`}
+                cx={kp.x}
+                cy={kp.y}
+                r={0.015}
+                fill="cyan"
+              />
+            );
+          })}
+        </Svg>
 
         <View style={styles.cameraOverlay}>
           <View style={styles.badgeRow}>
@@ -651,52 +598,6 @@ export default function LiveWorkoutScreen() {
       </View>
 
       <View style={styles.bottomPanel}>
-        <View style={{ flexDirection: "row", marginBottom: 8 }}>
-          <TouchableOpacity
-            style={[
-              styles.modeChip,
-              mode === "live" && styles.modeChipActive,
-            ]}
-            onPress={() => {
-              setMode("live");
-              setSelectedVideo(null);
-              setAnalysisData(null);
-              setProcessedVideoUri(null);
-              setElapsed(0);
-              setRunning(true);
-            }}
-          >
-            <Text
-              style={[
-                styles.modeChipText,
-                mode === "live" && styles.modeChipTextActive,
-              ]}
-            >
-              Live
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.modeChip,
-              mode === "upload" && styles.modeChipActive,
-            ]}
-            onPress={() => {
-              setMode("upload");
-              setRunning(false);
-              setStage("-");
-            }}
-          >
-            <Text
-              style={[
-                styles.modeChipText,
-                mode === "upload" && styles.modeChipTextActive,
-              ]}
-            >
-              Upload Video
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statLabel}>Time</Text>
@@ -717,124 +618,7 @@ export default function LiveWorkoutScreen() {
           </View>
         </View>
 
-        {mode === "upload" && (
-          <>
-            <TouchableOpacity
-              style={[styles.mainBtn, styles.secondaryBtn, { marginBottom: 8 }]}
-              onPress={async () => {
-                const result = await DocumentPicker.getDocumentAsync({
-                  type: "video/*",
-                });
-                if (result.canceled) return;
-                const asset =
-                  result.assets && result.assets.length > 0
-                    ? result.assets[0]
-                    : result;
-                setSelectedVideo(asset);
-                setAnalysisData(null);
-                setProcessedVideoUri(null);
-                Alert.alert("Video Selected", asset.name || "Video ready");
-              }}
-            >
-              <Ionicons
-                name="cloud-upload-outline"
-                size={18}
-                color={ColorTheme.fourth}
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                style={[styles.mainBtnText, { color: ColorTheme.fourth }]}
-              >
-                Choose Video
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.mainBtn, styles.primaryBtn, { marginBottom: 8 }]}
-              onPress={async () => {
-                if (!selectedVideo) {
-                  Alert.alert("No video", "Please choose a video first.");
-                  return;
-                }
-                try {
-                  const fileUri = selectedVideo.uri;
-                  const fileName = selectedVideo.name || "exercise.mp4";
-
-                  const formData = new FormData();
-                  formData.append("file", {
-                    uri: fileUri,
-                    name: fileName,
-                    type: "video/mp4",
-                  });
-                  formData.append("exercise_key", exerciseKey);
-                  formData.append(
-                    "patient_name",
-                    patientName || "Somay Singh"
-                  );
-                  formData.append(
-                    "patient_id",
-                    patientId || "P-2025-001"
-                  );
-                  formData.append("assigned_reps", String(repsTarget));
-                  formData.append("sets", String(totalSets));
-
-                  const res = await fetch(`${API_BASE}/analyze_video`, {
-                    method: "POST",
-                    body: formData,
-                  });
-
-                  if (!res.ok) {
-                    Alert.alert(
-                      "Error",
-                      "Failed to analyze the uploaded video."
-                    );
-                    return;
-                  }
-
-                  const data = await res.json();
-                  setAnalysisData(data);
-                  setTotalRepsDone(data.reps);
-                  setCount(data.reps);
-                  setElapsed(Math.round(data.duration));
-                  setFormLabel(
-                    data.form_score >= 0.8 ? "Good" : "Check Form"
-                  );
-                  setSessionEnded(true);
-                  setRunning(false);
-                  setSetCompleted(false);
-                  if (data.processed_video_url) {
-                    setProcessedVideoUri(
-                      `${API_BASE}${data.processed_video_url}`
-                    );
-                  }
-                  Alert.alert(
-                    "Analysis Complete",
-                    `Reps detected: ${data.reps}`
-                  );
-                } catch (err) {
-                  Alert.alert(
-                    "Error",
-                    "Something went wrong while analyzing the video."
-                  );
-                }
-              }}
-            >
-              <Ionicons
-                name="fitness-outline"
-                size={18}
-                color={ColorTheme.first}
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                style={[styles.mainBtnText, { color: ColorTheme.first }]}
-              >
-                Analyze Video
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {mode === "live" && !sessionEnded && !setCompleted && (
+        {!sessionEnded && !setCompleted && (
           <TouchableOpacity
             style={[styles.mainBtn, styles.stopBtn]}
             onPress={handleEndSession}
@@ -849,7 +633,7 @@ export default function LiveWorkoutScreen() {
           </TouchableOpacity>
         )}
 
-        {setCompleted && !sessionEnded && mode === "live" && (
+        {setCompleted && !sessionEnded && (
           <View style={styles.endActions}>
             <Text style={styles.endTitle}>Set {currentSet} completed</Text>
             <Text style={styles.endSub}>
@@ -892,8 +676,7 @@ export default function LiveWorkoutScreen() {
           <View style={styles.endActions}>
             <Text style={styles.endTitle}>Session completed</Text>
             <Text style={styles.endSub}>
-              Total reps: {analysisData?.reps ?? totalRepsDone} • Duration:{" "}
-              {(analysisData?.duration ?? elapsed).toFixed(1)} sec
+              Total reps: {totalRepsDone} • Duration: {elapsed.toFixed(1)} sec
             </Text>
 
             <View style={styles.endButtonsRow}>
@@ -1043,26 +826,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     backgroundColor: ColorTheme.second,
-  },
-  modeChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    marginRight: 6,
-  },
-  modeChipActive: {
-    backgroundColor: ColorTheme.fourth,
-    borderColor: ColorTheme.fourth,
-  },
-  modeChipText: {
-    fontSize: 12,
-    color: "#6b7280",
-    fontWeight: "500",
-  },
-  modeChipTextActive: {
-    color: ColorTheme.first,
   },
   statsRow: {
     flexDirection: "row",
