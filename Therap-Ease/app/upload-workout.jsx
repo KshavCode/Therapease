@@ -16,7 +16,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { Video } from "expo-av";
 import { ColorTheme } from "../constants/GlobalStyles";
 
-const API_BASE = "http://192.168.1.9:8000";
+const API_BASE = "http://192.168.X.X:8000";
 
 export default function UploadWorkoutScreen() {
   const router = useRouter();
