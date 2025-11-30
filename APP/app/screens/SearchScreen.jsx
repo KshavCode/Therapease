@@ -42,8 +42,8 @@ const styles = StyleSheet.create({
   suggestionItem: {
     paddingVertical: 10,
     paddingHorizontal: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: ColorTheme.third,
+    borderBottomWidth: .2,
+    borderBottomColor: ColorTheme.fourth,
   },
   suggestionText: {
     fontSize: 16,
@@ -53,56 +53,36 @@ const styles = StyleSheet.create({
 
 function SearchScreen() {
   const names = [
-    { id: 1, name: "Alice Johnson", role: "patient" },
-    { id: 2, name: "Bob Smith", role: "doctor" },
-    { id: 3, name: "Charlie Brown", role: "patient" },
-    { id: 4, name: "Diana Prince", role: "patient" },
-    { id: 5, name: "Ethan Clark", role: "doctor" },
-    { id: 6, name: "Fiona Adams", role: "patient" },
-    { id: 7, name: "George Miller", role: "patient" },
-    { id: 8, name: "Hannah Davis", role: "patient" },
-    { id: 9, name: "Ian Thompson", role: "doctor" },
-    { id: 10, name: "Julia Roberts", role: "patient" },
-    { id: 11, name: "Kevin Turner", role: "patient" },
-    { id: 12, name: "Laura Scott", role: "patient" },
-    { id: 13, name: "Michael Carter", role: "doctor" },
-    { id: 14, name: "Nina Brooks", role: "patient" },
-    { id: 15, name: "Oscar Reed", role: "patient" },
-    { id: 16, name: "Paula Hughes", role: "patient" },
-    { id: 17, name: "Quinn Parker", role: "doctor" },
-    { id: 18, name: "Rachel Ward", role: "patient" },
-    { id: 19, name: "Sam Evans", role: "patient" },
-    { id: 20, name: "Tina Collins", role: "patient" },
-    { id: 21, name: "Umar Patel", role: "doctor" },
-    { id: 22, name: "Vera Mitchell", role: "patient" },
-    { id: 23, name: "Will Barnes", role: "patient" },
-    { id: 24, name: "Xavier Reed", role: "doctor" },
-    { id: 25, name: "Yara Lopez", role: "patient" },
-    { id: 26, name: "Zack Morgan", role: "patient" },
-    { id: 27, name: "Amelia White", role: "patient" },
-    { id: 28, name: "Brandon Green", role: "doctor" },
-    { id: 29, name: "Clara Young", role: "patient" },
-    { id: 30, name: "David Hall", role: "patient" },
-    { id: 31, name: "Ella King", role: "patient" },
-    { id: 32, name: "Frank Lewis", role: "doctor" },
-    { id: 33, name: "Grace Allen", role: "patient" },
-    { id: 34, name: "Henry Walker", role: "patient" },
-    { id: 35, name: "Isabella Rivera", role: "patient" },
-    { id: 36, name: "Jack Cooper", role: "doctor" },
-    { id: 37, name: "Kylie Torres", role: "patient" },
-    { id: 38, name: "Liam Foster", role: "patient" },
-    { id: 39, name: "Maya Perez", role: "patient" },
-    { id: 40, name: "Noah Gray", role: "doctor" },
-    { id: 41, name: "Olivia Butler", role: "patient" },
-    { id: 42, name: "Peter Hughes", role: "patient" },
-    { id: 43, name: "Queenie Jenkins", role: "patient" },
-    { id: 44, name: "Ronan Phillips", role: "doctor" },
-    { id: 45, name: "Sophie Ward", role: "patient" },
-    { id: 46, name: "Travis Hill", role: "patient" },
-    { id: 47, name: "Uma Shah", role: "patient" },
-    { id: 48, name: "Victor Allen", role: "doctor" },
-    { id: 49, name: "Wendy Long", role: "patient" },
-    { id: 50, name: "Xander Stone", role: "doctor" },
+    { id: 321, name: "Alice Johnson", role: "patient" },
+    { id: 122, name: "Bob Smith", role: "doctor" },
+    { id: 3243, name: "Charlie Brown", role: "patient" },
+    { id: 3434, name: "Diana Prince", role: "patient" },
+    { id: 5435, name: "Ethan Clark", role: "doctor" },
+    { id: 5436, name: "Fiona Adams", role: "patient" },
+    { id: 7222, name: "George Miller", role: "patient" },
+    { id: 1238, name: "Hannah Davis", role: "patient" },
+    { id: 49, name: "Ian Thompson", role: "doctor" },
+    { id: 150, name: "Julia Roberts", role: "patient" },
+    { id: 6511, name: "Kevin Turner", role: "patient" },
+    { id: 1572, name: "Laura Scott", role: "patient" },
+    { id: 1873, name: "Michael Carter", role: "doctor" },
+    { id: 194, name: "Nina Brooks", role: "patient" },
+    { id: 19985, name: "Oscar Reed", role: "patient" },
+    { id: 1876, name: "Paula Hughes", role: "patient" },
+    { id: 617, name: "Quinn Parker", role: "doctor" },
+    { id: 1768, name: "Rachel Ward", role: "patient" },
+    { id: 1439, name: "Sam Evans", role: "patient" },
+    { id: 2340, name: "Tina Collins", role: "patient" },
+    { id: 221, name: "Umar Patel", role: "doctor" },
+    { id: 2382, name: "Vera Mitchell", role: "patient" },
+    { id: 293, name: "Will Barnes", role: "patient" },
+    { id: 2114, name: "Xavier Reed", role: "doctor" },
+    { id: 2125, name: "Yara Lopez", role: "patient" },
+    { id: 236, name: "Zack Morgan", role: "patient" },
+    { id: 2754, name: "Amelia White", role: "patient" },
+    { id: 286, name: "Brandon Green", role: "doctor" },
+    { id: 22119, name: "Clara Young", role: "patient" },
+    { id: 3350, name: "David Hall", role: "patient" },
   ];
 
   const [query, setQuery] = useState("");
@@ -110,17 +90,32 @@ function SearchScreen() {
   const [notFound, setNotFound] = useState(true);
 
   const handleSearch = (text) => {
-    setQuery(text);
-    if (text.length > 0) {
-      setNotFound(true)
-      const results = names.filter((item) =>
-        item.name.toLowerCase().includes(text.toLowerCase())
-      );
-      setFiltered(results);
-    } else {
-      setFiltered([]);
-    }
-  };
+  setQuery(text);
+
+  if (text.length === 0) {
+    setFiltered([]);
+    setNotFound(false);
+    return;
+  }
+
+  let query = text.toLowerCase();
+
+  // Remove '#' prefix if present
+  if (query.startsWith('#')) {
+    query = query.slice(1);
+  }
+
+  // Search by name OR id
+  const results = names.filter((item) => {
+    const nameMatch = item.name.toLowerCase().includes(query);
+    const idMatch = item.id.toString().includes(query);
+    return nameMatch || idMatch;
+  });
+
+  setFiltered(results);
+  setNotFound(results.length === 0);
+};
+
 
   const handleSelect = (name) => {
     setQuery(name);
@@ -149,7 +144,7 @@ function SearchScreen() {
                 onPress={() => handleSelect(item.name)}
               >
                 <Text style={styles.suggestionText}>
-                  {item.name} — {item.role}
+                  {item.name} (#{item.id} - {item.role})
                 </Text>
               </TouchableOpacity>
             )}

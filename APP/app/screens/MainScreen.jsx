@@ -36,10 +36,10 @@ const App = ({ role }) => {
         {role==='doctor' && (
           <Tab.Screen name="Patients" component={PatientsScreen} />
         )}
+        <Tab.Screen name="Search" component={SearchScreen} />
         {role==='doctor' && (
           <Tab.Screen name="Appointments" component={AppointmentsScreen} />
         )}
-        <Tab.Screen name="Search" component={SearchScreen} />
         <Tab.Screen name="Settings">
           {() => <SettingsScreen role={role} />}
         </Tab.Screen>
