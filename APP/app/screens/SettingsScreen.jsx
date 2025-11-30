@@ -1,3 +1,4 @@
+import { useNavigation } from "expo-router";
 import React, { useState } from "react";
 import {
   ScrollView,
@@ -11,11 +12,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { ColorTheme, styles as globalStyles } from "../../constants/GlobalStyles.jsx";
 
-function SettingsScreen({navigation}) {
+function SettingsScreen() {
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [location, setLocation] = useState(false);
   const [autoUpdates, setAutoUpdates] = useState(true);
+  const navigation = useNavigation();
 
   return (
     <SafeAreaView style={[globalStyles.screen, localStyles.screen]}>
@@ -171,6 +173,7 @@ function SettingsScreen({navigation}) {
           <TouchableOpacity
             style={[localStyles.actionRow, localStyles.logoutRow]}
             activeOpacity={0.8}
+            onPress={() => {navigation.navigate('Authenticate');}}
           >
             <View style={localStyles.actionLeft}>
               <Ionicons name="log-out-outline" size={20} color="#ff6b6b" />

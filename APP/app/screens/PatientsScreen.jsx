@@ -1,4 +1,5 @@
 import { ColorTheme } from "@/constants/GlobalStyles";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   FlatList,
@@ -11,7 +12,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 
 const SAMPLE = [
   {
@@ -265,13 +265,6 @@ export default function PatientsScreen() {
                         </Text>
                       )}
                     </View>
-
-                    <TouchableOpacity
-                      style={[stylesLocal.smallBtn, stylesLocal.startBtn]}
-                      onPress={() => handleOpenExercise(item, ex)}
-                    >
-                      <Text style={stylesLocal.smallBtnText}>Start</Text>
-                    </TouchableOpacity>
                   </View>
                 ))}
               </View>
