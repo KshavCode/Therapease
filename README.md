@@ -46,6 +46,12 @@ Therap-Ease is an intelligent physiotherapy platform designed to modernize exerc
 
 ---
 
+## 📷 Screenshots
+
+
+
+---
+
 ## 📦 Getting Started
 
 Follow these steps to run Therap-Ease locally.
